@@ -32,3 +32,6 @@ redist.txt
 
 # directory created when running reproducibility scripts
 linux/reproducibility/code_dir/
+
+# part of compiling output
+*.ddeb *.deb

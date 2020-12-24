@@ -513,6 +513,71 @@ let gen_parm_retval (rt: Ast.atype) =
 
 (* ---------------------------------------------------------------------- *)
 
+(* It generates table of OCALL additional info in trts. *)
+let gen_trts_ocall_extra_table (ec: enclave_content) =
+    let ocall_names = List.map (fun (uf: Ast.untrusted_func) ->
+        let fd : Ast.func_decl = uf.Ast.uf_fdecl in fd.Ast.fname) ec.ufunc_decls in
+    let func_proto_ubridge = List.map (fun (uf: Ast.untrusted_func) ->
+        let fd : Ast.func_decl = uf.Ast.uf_fdecl in mk_ubridge_name ec.enclave_name fd.Ast.fname) ec.ufunc_decls in
+    let nr_ocall = List.length ec.ufunc_decls in
+    let trts_ocall_extra_table_name = "g_trts_ocall_extra_table" in
+
+    let trts_ocall_extra_table =
+        let inner_table =
+            List.fold_left2 (fun acc s1 s2 ->
+                sprintf "%s\t\t{%s, \"%s\", \"%s\"},\n" acc s1 s1 s2 ) "" ocall_names func_proto_ubridge
+        in "\t{\n" ^ inner_table ^ "\t}\n"
+    in
+
+    sprintf "SGX_EXTERNC const struct {\n\
+        \tsize_t nr_ocall;\n\
+        \tstruct {void* ocall_func; char* ocall_name; char* ubridge_name; } table[%d];\n\
+        } %s = {\n\
+        \t%d,\n\
+        %s};\n" nr_ocall
+                trts_ocall_extra_table_name
+                nr_ocall
+                (if nr_ocall = 0 then "" else trts_ocall_extra_table)
+
+(* ---------------------------------------------------------------------- *)
+
+(* `gen_ecall_extra_table' is used to generate table of ECALL additional info with the following form:
+    SGX_EXTERNC const struct {
+       size_t nr_ecall;    /* number of ECALLs */
+       struct {
+           char   *ecall_name;
+           char   *tbridge_name;
+       } ecall_extra_table [nr_ecall];
+   } g_ecall_extra_table = {
+       2, { {"foo", "sgx_foo"}, {"bar", "sgx_bar"} }
+   };
+*)
+let gen_ecall_extra_table (tfs: Ast.trusted_func list) =
+    let ecall_extra_table_name = "g_ecall_extra_table" in
+    let ecall_extra_table_size = List.length tfs in
+    let trusted_fds = tf_list_to_fd_list tfs in
+    let ecall_names = List.map (fun (fd: Ast.func_decl) -> fd.Ast.fname) trusted_fds in
+    let tbridge_names = List.map (fun (fd: Ast.func_decl) ->
+                                  mk_tbridge_name fd.Ast.fname) trusted_fds in
+
+    let ecall_extra_table =
+        let inner_table =
+            List.fold_left2 (fun acc s1 s2 ->
+                             sprintf "%s\t\t{%s, \"%s\", \"%s\"},\n" acc s1 s1 s2 ) "" ecall_names tbridge_names
+        in "\t{\n" ^ inner_table ^ "\t}\n"
+    in
+        sprintf "SGX_EXTERNC const struct {\n\
+                \tsize_t nr_ecall;\n\
+                \tstruct {void* ecall_func; char* ecall_name; char* tbridge_name; } table[%d];\n\
+                } %s = {\n\
+                \t%d,\n\
+                %s};\n" ecall_extra_table_size
+                        ecall_extra_table_name
+                        ecall_extra_table_size
+                        (if ecall_extra_table_size = 0 then "" else ecall_extra_table)
+
+(* ---------------------------------------------------------------------- *)
+
 (* `gen_ecall_table' is used to generate ECALL table with the following form:
     SGX_EXTERNC const struct {
        size_t nr_ecall;    /* number of ECALLs */
@@ -1657,43 +1722,48 @@ let gen_tbridge_local_vars (plist: Ast.pdecl list) =
     str ^ if deep_copy then "\tsize_t i = 0;\n" else ""
 
 (* It generates trusted bridge code for a trusted function. *)
-let gen_func_tbridge (fd: Ast.func_decl) (dummy_var: string) =
+let gen_func_tbridge (tfd: Ast.trusted_func) (idx: int) (dummy_var: string) =
   let func_open = sprintf "static sgx_status_t SGX_CDECL %s(void* %s)\n{\n"
-                          (mk_tbridge_name fd.Ast.fname)
+                          (mk_tbridge_name tfd.Ast.tf_fdecl.fname)
                           ms_ptr_name in
-  let local_vars = gen_tbridge_local_vars fd.Ast.plist in
+  let local_vars = gen_tbridge_local_vars tfd.Ast.tf_fdecl.plist in
   let func_close = "\treturn status;\n}\n" in
 
-  let ms_struct_name = mk_ms_struct_name fd.Ast.fname in
+  let ms_struct_name = mk_ms_struct_name tfd.Ast.tf_fdecl.fname in
   let declare_ms_ptr = sprintf "%s* %s = SGX_CAST(%s*, %s);"
                                ms_struct_name
                                ms_struct_val
                                ms_struct_name
                                ms_ptr_name in
 
-  let invoke_func   = gen_func_invoking fd mk_parm_name_tbridge in
+  let invoke_func   = gen_func_invoking tfd.Ast.tf_fdecl mk_parm_name_tbridge in
   let update_retval = sprintf "%s = %s"
                               (mk_parm_accessor retval_name)
                               invoke_func in
-
-    if is_naked_func fd then
+  let check_point_ecall_str = sprintf "if(!g_check_point_trigger(%s, %d, NULL)) return SGX_ERROR_CHECK_POINT;\n"
+                                      (if tfd.Ast.tf_is_switchless then "INTERFACE_SL_ECALL" else "INTERFACE_ECALL") idx in
+  let check_point_ecall_ret_str = sprintf "if(!g_check_point_trigger(%s, %d, NULL)) return SGX_ERROR_CHECK_POINT;\n"
+                                      (if tfd.Ast.tf_is_switchless then "INTERFACE_SL_ECALL_RET" else "INTERFACE_ECALL_RET") idx in
+    if is_naked_func tfd.Ast.tf_fdecl then
       let check_pms =
         sprintf "if (%s != NULL) return SGX_ERROR_INVALID_PARAMETER;" ms_ptr_name
       in
-        sprintf "%s%s%s\t%s\n\t%s\n%s" func_open local_vars dummy_var check_pms invoke_func func_close
+        sprintf "%s%s%s\t%s\n\t%s\t%s\n\t%s%s" func_open local_vars dummy_var check_pms check_point_ecall_str invoke_func check_point_ecall_ret_str func_close
     else
-      sprintf "%s%s\t%s\n%s\n%s%s\n%s\n\t%s\n%s\n%s\n%s%s"
+      sprintf "%s%s\t%s\n%s\n%s%s\n%s\n\t%s\t%s\n\t%s%s\n%s\n%s%s"
         func_open
-        (mk_check_pms fd.Ast.fname)
+        (mk_check_pms tfd.Ast.tf_fdecl.fname)
         declare_ms_ptr
         local_vars
-        (gen_check_tbridge_length_overflow fd.Ast.plist)
-        (gen_check_tbridge_ptr_parms fd.Ast.plist)
-        (gen_parm_ptr_direction_pre fd.Ast.plist)
-        (if fd.Ast.rtype <> Ast.Void then update_retval else invoke_func)
-        (gen_parm_ptr_direction_post fd.Ast.plist)
-        (gen_err_mark fd.Ast.plist)
-        (gen_parm_ptr_free_post fd.Ast.plist)
+        (gen_check_tbridge_length_overflow tfd.Ast.tf_fdecl.plist)
+        (gen_check_tbridge_ptr_parms tfd.Ast.tf_fdecl.plist)
+        (gen_parm_ptr_direction_pre tfd.Ast.tf_fdecl.plist)
+        (check_point_ecall_str)
+        (if tfd.Ast.tf_fdecl.rtype <> Ast.Void then update_retval else invoke_func)
+        (check_point_ecall_ret_str)
+        (gen_parm_ptr_direction_post tfd.Ast.tf_fdecl.plist)
+        (gen_err_mark tfd.Ast.tf_fdecl.plist)
+        (gen_parm_ptr_free_post tfd.Ast.tf_fdecl.plist)
         func_close
 
 let tproxy_fill_ms_field (pd: Ast.pdecl) (is_ocall_switchless: bool) =
@@ -2182,11 +2252,16 @@ let gen_func_tproxy (ufunc: Ast.untrusted_func) (idx: int) =
                | Ast.PTPtr(ty, attr) -> acc ^ copy_memory ty attr declr) "" plist in
 
   let set_errno = if propagate_errno then "\t\terrno = ms->ocall_errno;\n" else "" in
-  let func_close = sprintf "%s%s%s\n%s%s\n"
+  let check_point_ocall_str = sprintf "if(!g_check_point_trigger(%s, %d, NULL)) return SGX_ERROR_CHECK_POINT;\n"
+                                      (if ufunc.Ast.uf_is_switchless then "INTERFACE_SL_OCALL" else "INTERFACE_OCALL") idx in
+  let check_point_ocall_ret_str = sprintf "if(!g_check_point_trigger(%s, %d, NULL)) return SGX_ERROR_CHECK_POINT;\n"
+                                    (if ufunc.Ast.uf_is_switchless then "INTERFACE_SL_OCALL_RET" else "INTERFACE_OCALL_RET") idx in
+  let func_close = sprintf "%s%s%s\n%s\t%s%s\n"
                            (handle_out_ptr fd.Ast.plist)
                            set_errno
                            "\t}"
                            (gen_ocfree fd.Ast.rtype fd.Ast.plist)
+                           check_point_ocall_ret_str
                            "\treturn status;\n}" in
   let sgx_ocall_fn = get_sgx_fname SGX_OCALL ufunc.Ast.uf_is_switchless in
   let ocall_null = sprintf "status = %s(%d, NULL);\n" sgx_ocall_fn idx in
@@ -2195,9 +2270,10 @@ let gen_func_tproxy (ufunc: Ast.untrusted_func) (idx: int) =
                               retval_name retval_name (mk_parm_accessor retval_name) in
   let func_body = ref [] in
     if (is_naked_func fd) && (propagate_errno = false) then
-        sprintf "%s\t%s\t%s%s" func_open local_vars ocall_null "\n\treturn status;\n}"
+        sprintf "%s\t%s\n\t%s\t%s\n\t%s%s" func_open check_point_ocall_str local_vars ocall_null check_point_ocall_ret_str "\n\treturn status;\n}"
     else
       begin
+        func_body := check_point_ocall_str :: !func_body;
         func_body := local_vars :: !func_body;
         func_body := ocalloc_ms_struct:: !func_body;
         List.iter (fun pd -> func_body := tproxy_fill_ms_field pd ufunc.Ast.uf_is_switchless :: !func_body ) fd.Ast.plist;
@@ -2262,7 +2338,8 @@ let gen_trusted_source (ec: enclave_content) =
 #include \"sgx_lfence.h\" /* for sgx_lfence */\n\n\
 #include <errno.h>\n\
 #include <mbusafecrt.h> /* for memcpy_s etc */\n\
-#include <stdlib.h> /* for malloc/free etc */\n\
+#include <stdlib.h> /* for malloc/free etc */\n\n\
+#include \"check_point.h\"\n\
 \n\
 #define CHECK_REF_POINTER(ptr, siz) do {\t\\\n\
 \tif (!(ptr) || ! sgx_is_outside_enclave((ptr), (siz)))\t\\\n\
@@ -2284,10 +2361,13 @@ let gen_trusted_source (ec: enclave_content) =
 )\n\
 \n"
   in
-  let trusted_fds = tf_list_to_fd_list ec.tfunc_decls in
   let tbridge_list =
     let dummy_var = tbridge_gen_dummy_variable ec in
-    List.map (fun tfd -> gen_func_tbridge tfd dummy_var) trusted_fds in
+    List.map2 (fun tfd idx -> gen_func_tbridge tfd idx dummy_var)
+        ec.tfunc_decls
+        (Util.mk_seq 0 (List.length ec.tfunc_decls - 1)) in
+  let trts_ocall_extra_table = gen_trts_ocall_extra_table ec in
+  let ecall_extra_table = gen_ecall_extra_table ec.tfunc_decls in
   let ecall_table = gen_ecall_table ec.tfunc_decls in
   let entry_table = gen_entry_table ec in
   let tproxy_list = List.map2
@@ -2298,7 +2378,7 @@ let gen_trusted_source (ec: enclave_content) =
     output_string out_chan (include_hd ^ "\n");
     ms_writer out_chan ec;
     List.iter (fun s -> output_string out_chan (s ^ "\n")) tbridge_list;
-    output_string out_chan (ecall_table ^ "\n");
+    output_string out_chan (trts_ocall_extra_table ^"\n"^ ecall_extra_table ^"\n"^ ecall_table ^"\n");
     output_string out_chan (entry_table ^ "\n");
     output_string out_chan "\n";
     List.iter (fun s -> output_string out_chan (s ^ "\n")) tproxy_list;
@@ -2500,6 +2580,32 @@ let reduce_import (ec: enclave_content) =
         ufunc_decls  = acc.ufunc_decls @ ec2.ufunc_decls; }
   in
   List.fold_left (combine) (List.hd imported_ec_list) (List.tl imported_ec_list)
+
+(* It generate policy source file. *)
+(*let gen_policy_source (fname: string) =*)
+(*    let policy_source = Buffer.create 256 in*)
+(*    let get_policy_source (fname: string) =*)
+(*        if not (Sys.file_exists(fname)) then*)
+(*            Buffer.add_string policy_source ("#include \"check_point.hpp\"\n\*)
+(*                                             bool __attribute__((weak)) policy_check_user(cp_info_t info, std::deque <cp_info_t> log) {\n\*)
+(*                                             \t(void) info;\n\*)
+(*                                             \t(void) log;\n\*)
+(*                                             \treturn true;\n\*)
+(*                                             }")*)
+(*        else*)
+(*            let ic = open_in fname in*)
+(*                try*)
+(*                    while true do*)
+(*                        let line = input_line ic in*)
+(*                        Buffer.add_string policy_source (line ^ "\n");*)
+(*                    done*)
+(*                with*)
+(*                    e -> close_in_noerr ic*)
+(*    in*)
+(*    let oc = open_out ("_" ^ fname) in*)
+(*    get_policy_source(fname);*)
+(*    output_string oc (Buffer.contents policy_source);*)
+(*    close_out oc*)
 
 (* Generate the Enclave code. *)
 let gen_enclave_code (e: Ast.enclave) (ep: edger8r_params) =

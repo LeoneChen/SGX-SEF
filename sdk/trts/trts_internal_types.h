@@ -31,6 +31,39 @@
 #ifndef TRTS_INTERNAL_TYPES_H
 #define TRTS_INTERNAL_TYPES_H
 
+#ifndef TRTS_OCALL_EXTRA_INFO_T
+#define TRTS_OCALL_EXTRA_INFO_T
+typedef struct {
+    void* ocall_func;
+    char* ocall_name;
+    char* ubridge_name;
+} trts_ocall_extra_info_t;
+#endif //TRTS_OCALL_EXTRA_INFO_T
+
+#ifndef TRTS_OCALL_EXTRA_TABLE_T
+#define TRTS_OCALL_EXTRA_TABLE_T
+typedef struct {
+    size_t nr_ocall;
+    trts_ocall_extra_info_t table[];
+} trts_ocall_extra_table_t;
+#endif //TRTS_OCALL_EXTRA_TABLE_T
+
+#ifndef ECALL_EXTRA_INFO_T
+#define ECALL_EXTRA_INFO_T
+typedef struct {
+    void* ecall_func;
+    char* ecall_name;
+    char* tbridge_name;
+} ecall_extra_info_t;
+#endif //ECALL_EXTRA_INFO_T
+
+#ifndef ECALL_EXTRA_TABLE_T
+#define ECALL_EXTRA_TABLE_T
+typedef struct {
+    size_t nr_ecall;
+    ecall_extra_info_t table[];
+} ecall_extra_table_t;
+#endif //ECALL_EXTRA_TABLE_T
 
 typedef struct {
     const void     *ecall_addr;

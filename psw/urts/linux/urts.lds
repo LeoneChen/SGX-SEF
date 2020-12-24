@@ -18,6 +18,7 @@
         sgx_create_enclave_from_buffer_ex;
         sgx_set_switchless_itf;
         sgx_get_metadata;
+        print_string_dbg_ocall;
     local:
         *;
 };

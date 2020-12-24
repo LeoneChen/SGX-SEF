@@ -30,7 +30,10 @@
  */
 
 #include "Enclave_t.h"
+#include "check_point.hpp"
+#include <stdio.h> /* vsnprintf */
 
+int printf(const char* fmt, ...);
 void ecall_repeat_ocalls(unsigned long nrepeats, int use_switchless) {
     sgx_status_t(*ocall_fn)(void) = use_switchless ? ocall_empty_switchless : ocall_empty;
     while (nrepeats--) {
@@ -40,3 +43,22 @@ void ecall_repeat_ocalls(unsigned long nrepeats, int use_switchless) {
 
 void ecall_empty(void) {}
 void ecall_empty_switchless(void) {}
+
+/*
+ * printf:
+ *   Invokes OCALL to display the enclave buffer to the terminal.
+ */
+int printf(const char* fmt, ...)
+{
+    char buf[BUFSIZ] = { '\0' };
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buf, BUFSIZ, fmt, ap);
+    va_end(ap);
+    ocall_print_string(buf);
+    return (int)strnlen(buf, BUFSIZ - 1) + 1;
+}
+
+void ecall_show_log(){
+    g_check_point->show_log("Switchless");
+}

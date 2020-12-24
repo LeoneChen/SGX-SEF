@@ -122,7 +122,7 @@ size_t SGXAPI sgx_fwrite(const void* ptr, size_t size, size_t count, SGX_FILE* s
  *     size_t  - number of 'size' blocks read from the file, 0 in case of an error - check sgx_ferror for error code
 */
 size_t SGXAPI sgx_fread(void* ptr, size_t size, size_t count, SGX_FILE* stream);
-
+size_t SGXAPI sgx_freadline(char *buf, size_t buf_size, SGX_FILE *stream);
 
 /* sgx_ftell
  *  Purpose: get the current value of the position indicator of the file (see c++ ftell documentation for more details).

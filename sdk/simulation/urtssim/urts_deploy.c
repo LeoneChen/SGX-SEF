@@ -93,3 +93,9 @@ sgx_status_t sgx_get_metadata()
     printf("Please use the correct uRTS library from PSW package.\n");
     return SGX_ERROR_UNEXPECTED;
 }
+
+void print_string_dbg_ocall()
+{
+    printf("Please use the correct uRTS library from PSW package.\n");
+    return SGX_ERROR_UNEXPECTED;
+}

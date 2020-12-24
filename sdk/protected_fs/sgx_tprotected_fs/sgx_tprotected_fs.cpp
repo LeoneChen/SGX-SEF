@@ -34,7 +34,7 @@
 #include "protected_fs_file.h"
 
 #include <errno.h>
-
+#include <string>
 
 static SGX_FILE* sgx_fopen_internal(const char* filename, const char* mode, const sgx_key_128bit_t *auto_key, const sgx_key_128bit_t *kdk_key)
 {
@@ -99,6 +99,38 @@ size_t sgx_fread(void* ptr, size_t size, size_t count, SGX_FILE* stream)
 	return file->read(ptr, size, count);
 }
 
+size_t sgx_freadline(char *buf, size_t buf_size, SGX_FILE *stream) {
+    if (stream == nullptr or buf == nullptr) return 0;
+
+    size_t cache_size = 64;
+    size_t offset = 0;
+
+    do {
+        if (buf_size == offset) {
+            // buffer is full
+            offset--;
+            *(buf + offset) = '\0';
+            break;
+        }
+        size_t byte_nr = sgx_fread(buf + offset, sizeof(char),
+                                   buf_size - offset > cache_size ? cache_size : (buf_size - offset), stream);
+        if (byte_nr == 0) break;
+
+        size_t idx = std::string(buf + offset).find('\n');
+        if (idx != std::string::npos) {
+            // read enough bytes
+            *(buf + offset + idx) = '\0';
+            //adjust stream position to normal
+            sgx_fseek(stream, (idx + 1 - (int) byte_nr), SEEK_CUR);
+            offset += idx;
+            break;
+        }
+        //update read bytes' count
+        offset += byte_nr;
+    } while (true);
+
+    return offset;
+}
 
 int64_t sgx_ftell(SGX_FILE* stream)
 {

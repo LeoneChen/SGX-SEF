@@ -53,7 +53,7 @@ typedef struct _sgx_errlist_t {
     const char *sug; /* Suggestion */
 } sgx_errlist_t;
 
-#define REPEATS 500000
+#define REPEATS 5000
 
 /* Error code returned by sgx_create_enclave */
 static sgx_errlist_t sgx_errlist[] = {
@@ -258,6 +258,7 @@ int SGX_CDECL main(int argc, char *argv[])
     benchmark_empty_ecall(0);
     printf("Done.\n");
 
+    ecall_show_log(global_eid);
     sgx_destroy_enclave(global_eid);
     return 0;
 }

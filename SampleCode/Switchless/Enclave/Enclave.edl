@@ -34,16 +34,26 @@
 enclave {
     from "sgx_tstdc.edl" import *;
     from "sgx_tswitchless.edl" import *;
-
+    from "sgx_tprotected_fs.edl" import *; // for log_file_mode
+    from "sgx_printf_dbg.edl" import *; // for printf_dbg usage
     trusted {
         public void ecall_repeat_ocalls(unsigned long nrepeats, int use_switchless);
 
         public void ecall_empty(void);
         public void ecall_empty_switchless(void) transition_using_threads;
+
+        public void ecall_show_log(void);
     };
 
     untrusted {
         void ocall_empty(void);
         void ocall_empty_switchless(void) transition_using_threads;
+        /*
+             * ocall_print_string - invokes OCALL to display string buffer inside the enclave.
+             *  [in]: copy the string buffer to App outside.
+             *  [string]: specifies 'str' is a NULL terminated buffer.
+             */
+        void ocall_print_string([in, string] const char *str);
+
     };
 };
