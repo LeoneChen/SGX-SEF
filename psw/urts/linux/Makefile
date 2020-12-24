@@ -86,7 +86,8 @@ OBJ1 := loader.o          \
         cpu_features_ext.o    \
         launch_checker.o  \
         urts_version.o    \
-        enclave_creator_hw_com.o 
+        enclave_creator_hw_com.o \
+        print_string_dbg_ocall.o
 
 OBJ2 := urts.o               \
         enclave_creator_hw.o \

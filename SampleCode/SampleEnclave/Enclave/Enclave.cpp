@@ -34,7 +34,7 @@
 #include <stdarg.h>
 #include <stdio.h> /* vsnprintf */
 #include <string.h>
-
+#include "check_point.hpp"
 /* 
  * printf: 
  *   Invokes OCALL to display the enclave buffer to the terminal.
@@ -48,4 +48,8 @@ int printf(const char* fmt, ...)
     va_end(ap);
     ocall_print_string(buf);
     return (int)strnlen(buf, BUFSIZ - 1) + 1;
+}
+
+void ecall_show_log(){
+    g_check_point->show_log();
 }

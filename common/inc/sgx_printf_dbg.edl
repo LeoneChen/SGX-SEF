@@ -1,0 +1,9 @@
+//
+// Created by leone on 2020/10/14.
+//
+
+enclave {
+    untrusted {
+        [cdecl] void print_string_dbg_ocall([in, string] const char *str);
+    };
+};

@@ -41,6 +41,9 @@
 #include <errno.h>
 #include <sl_siglines.h>
 
+#ifdef SL_INSIDE_ENCLAVE /* trusted */
+#include "check_point.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -147,10 +150,24 @@ static inline void process_switchless_call(struct sl_siglines* siglns, uint32_t 
         goto on_done;
     }
 
+#ifdef SL_INSIDE_ENCLAVE /* trusted */
+    if(!g_check_point_trigger(INTERFACE_SL_ECALL, (int)func_id, call_task_u->func_data, 1)) {
+        call_task_u->ret_code = SGX_ERROR_INVALID_FUNCTION;
+        goto on_done;
+    }
+#endif
+
     // Do the call.
     // func_data should point to untrusted buffer and should be checked by invoked function
     // in our case, edre8r generated code is performing the check
     call_task_u->ret_code = call_func_ptr(call_task_u->func_data);
+
+#ifdef SL_INSIDE_ENCLAVE /* trusted */
+    if(!g_check_point_trigger(INTERFACE_SL_ECALL_RET, (int)func_id, call_task_u->func_data, 1))  {
+        call_task_u->ret_code = SGX_ERROR_INVALID_FUNCTION;
+        goto on_done;
+    }
+#endif
 
 on_done:
     /* Notify the caller that the switchless is done by updating the status.

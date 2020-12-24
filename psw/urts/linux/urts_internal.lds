@@ -21,6 +21,7 @@
         sgx_get_metadata;
         sgx_set_switchless_itf;
         init_get_launch_token;
+        print_string_dbg_ocall;
     local:
         *;
 };

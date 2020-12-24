@@ -47,6 +47,7 @@
 #include "global_data.h"
 #include "trts_internal.h"
 #include "internal/rts.h"
+#include "check_point.hpp"
 
 static void __attribute__((section(".nipx"))) init_stack_guard(void *tcs)
 {
@@ -114,6 +115,7 @@ extern "C" int enter_enclave(int index, void *ms, void *tcs, int cssa)
     }
     else if((cssa == 1) && (index == ECMD_EXCEPT))
     {
+        if(!g_check_point->trigger(INTERFACE_AEX, ECMD_EXCEPT, ms)) return SGX_ERROR_CHECK_POINT;
         error = trts_handle_exception(tcs);
         if (check_static_stack_canary(tcs) != 0)
         {

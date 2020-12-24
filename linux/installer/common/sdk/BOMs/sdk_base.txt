@@ -74,7 +74,11 @@ DeliveryName	InstallName	FileCheckSum	FileFeature	FileOwner
 <deliverydir>/common/inc/tlibc/setjmp.h	<installdir>/package/include/tlibc/setjmp.h	0	main	STP
 <deliverydir>/common/inc/tlibc/mbusafecrt.h	<installdir>/package/include/tlibc/mbusafecrt.h	0	main	STP
 <deliverydir>/common/inc/tlibc/pthread.h	<installdir>/package/include/tlibc/pthread.h	0	main	STP
+<deliverydir>/common/inc/tlibc/printf_dbg.h	<installdir>/package/include/tlibc/printf_dbg.h	0	main	STP
+<deliverydir>/common/inc/check_point.h	<installdir>/package/include/check_point.h	0	main	STP
+<deliverydir>/common/inc/check_point.hpp	<installdir>/package/include/check_point.hpp	0	main	STP
 <deliverydir>/common/inc/sgx_pthread.edl	<installdir>/package/include/sgx_pthread.edl	0	main	STP
+<deliverydir>/common/inc/sgx_printf_dbg.edl	<installdir>/package/include/sgx_printf_dbg.edl	0	main	STP
 <deliverydir>/psw/enclave_common/sgx_enclave_common.h	<installdir>/package/include/./sgx_enclave_common.h	0	main	STP
 <deliverydir>/external/ippcp_internal/inc/ippcp.h	<installdir>/package/include/ipp/ippcp.h	0	main	STP
 <deliverydir>/external/ippcp_internal/inc/ippcpdefs.h	<installdir>/package/include/ipp/ippcpdefs.h	0	main	STP

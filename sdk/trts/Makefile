@@ -55,7 +55,9 @@ OBJS1 := init_enclave.o  \
         trts_version.o \
         trts_trim.o \
         trts_emodpr.o  \
-        trts_add_trim.o
+        trts_add_trim.o \
+        check_point.o \
+        check_point_cwrapper.o
 
 OBJS2 := trts_nsp.o
 

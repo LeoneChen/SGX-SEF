@@ -37,6 +37,7 @@
 #include "rts.h"
 #include "util.h"
 #include "trts_internal.h"
+#include "check_point.hpp"
 
 extern "C" sgx_status_t asm_oret(uintptr_t sp, void *ms);
 extern "C" sgx_status_t __morestack(const unsigned int index, void *ms);
@@ -61,8 +62,9 @@ sgx_status_t sgx_ocall(const unsigned int index, void *ms)
     }
 
     // do sgx_ocall
+    if(not g_check_point->trigger(INTERFACE_OCALL, index, ms, true)) return SGX_ERROR_CHECK_POINT;
     sgx_status_t status = do_ocall(index, ms);
-
+    if(not g_check_point->trigger(INTERFACE_OCALL_RET, index, ms, true)) return SGX_ERROR_CHECK_POINT;
     return status;
 }
 
@@ -119,8 +121,8 @@ sgx_status_t do_oret(void *ms)
     }
 
     thread_data->last_sp = context->pre_last_sp;
+
     asm_oret(last_sp, ms);
-    
     // Should not come here
     return SGX_ERROR_UNEXPECTED;
 }

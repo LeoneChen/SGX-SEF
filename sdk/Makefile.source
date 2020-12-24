@@ -62,7 +62,7 @@ LIBTCXX    := $(BUILD_DIR)/libsgx_tcxx.a
 LIBTSE     := $(BUILD_DIR)/libsgx_tservice.a
 
 .PHONY: components
-components: tstdc tcxx tservice trts tcrypto tkey_exchange ukey_exchange tprotected_fs uprotected_fs ptrace sample_crypto libcapable simulation signtool edger8r tcmalloc sgx_pcl sgx_encrypt sgx_tswitchless sgx_uswitchless pthread openmp
+components: tstdc tcxx tservice trts tcrypto tkey_exchange ukey_exchange tprotected_fs uprotected_fs ptrace sample_crypto libcapable simulation signtool edger8r tcmalloc sgx_pcl sgx_encrypt sgx_tswitchless sgx_uswitchless pthread openmp printf_dbg
 
 # ---------------------------------------------------
 #  tstdc
@@ -258,6 +258,14 @@ edger8r:
 sgx_encrypt: tservice
 	$(MAKE) -C encrypt_enclave
 
+# ---------------------------------------------------
+#  printf_dbg
+#      includes: printf_dbg
+# ---------------------------------------------------
+.PHONY: printf_dbg
+printf_dbg: edger8r
+	$(MAKE) -C printf_dbg/
+
 $(BUILD_DIR):
 	$(MKDIR) $@
 
@@ -292,5 +300,6 @@ clean:
 	$(MAKE) -C tmm_rsrv/                           clean
 	$(MAKE) -C pthread                             clean
 	$(MAKE) -C $(LINUX_EXTERNAL_DIR)/openmp        clean
+	$(MAKE) -C printf_dbg                          clean
 	@$(RM) $(LIBTLIBC) $(LIBTCXX) $(LIBTSE)
 	@$(RM) $(BUILD_DIR)/libc++_Changes_SGX.txt

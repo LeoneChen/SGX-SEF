@@ -51,6 +51,7 @@
 #include "pthread_imp.h"
 #include "sgx_random_buffers.h"
 #include "se_page_attr.h"
+#include "check_point.hpp"
 
 __attribute__((weak)) sgx_status_t _pthread_thread_run(void* ms) {UNUSED(ms); return SGX_SUCCESS;}
 __attribute__((weak)) bool _pthread_enabled() {return false;}
@@ -296,8 +297,9 @@ static sgx_status_t trts_ecall(uint32_t ordinal, void *ms)
         ecall_func_t func = (ecall_func_t)addr;
 
         sgx_lfence();
-
+        if(!g_check_point->trigger(INTERFACE_ECALL, (int)ordinal, ms, true)) return SGX_ERROR_CHECK_POINT;
         status = func(ms);
+        if(!g_check_point->trigger(INTERFACE_ECALL_RET, (int)ordinal, ms, true)) return SGX_ERROR_CHECK_POINT;
     }
     
     return status;

@@ -32,3 +32,28 @@ redist.txt
 
 # directory created when running reproducibility scripts
 linux/reproducibility/code_dir/
+
+# Clion idea dir
+.idea
+
+# part of compiling output
+*.lo
+*.la
+*.ddeb
+*.deb
+**/.deps
+**/.dirstamp
+linux/installer/common/sdk/pkgconfig/x64/
+sdk/cpprt/linux/libunwind/src/**/libunwind*.pc
+sdk/cpprt/linux/libunwind/config.log
+sdk/cpprt/linux/libunwind/config.status
+sdk/cpprt/linux/libunwind/include/config.h
+sdk/cpprt/linux/libunwind/include/config.h.in
+sdk/cpprt/linux/libunwind/include/config.h.in~
+sdk/cpprt/linux/libunwind/include/libunwind-common.h
+sdk/cpprt/linux/libunwind/include/libunwind.h
+sdk/cpprt/linux/libunwind/include/stamp-h1
+sdk/cpprt/linux/libunwind/include/tdep/libunwind_i.h
+sdk/cpprt/linux/libunwind/libtool
+sdk/cpprt/linux/libunwind/src/Makefile
+sdk/cpprt/linux/libunwind/tests/Makefile.in
