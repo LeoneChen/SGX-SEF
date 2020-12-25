@@ -1,10 +1,10 @@
 //
 // Created by leone on 2020/10/14.
 //
+#include <printf_dbg.h> // Contain stdarg.h for va_list and extern "C" declaration
 #ifdef DEBUG
 #include <string.h> // for strlen
 #include <stdio.h> // for vsnprintf, BUFSIZ
-#include <printf_dbg.h> // Contain stdarg.h for va_list
 #include "sgx_printf_dbg_t.h" // for print_string_dbg_ocall
 #endif //DEBUG
 

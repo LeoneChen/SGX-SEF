@@ -34,7 +34,7 @@
 enclave {
     from "sgx_tstdc.edl" import *;
     from "sgx_tswitchless.edl" import *;
-
+    from "sgx_tprotected_fs.edl" import *; // for log_file_mode
     trusted {
         public void ecall_repeat_ocalls(unsigned long nrepeats, int use_switchless);
 
