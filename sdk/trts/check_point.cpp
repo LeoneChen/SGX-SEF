@@ -13,9 +13,8 @@
 
 #define UNUSED(val) (void)(val)
 #define CP_DEBUG
-//#define FILE_MODE// have some problem, due to nested ocall and problem in ocall's implementation
-
-bool just_warning = true;
+//#define FILE_MODE// have some problem, maybe due to nested ocall or problem in ocall's implementation
+//#define WARNING
 
 static CheckPoint _check_point;
 CheckPoint *g_check_point = &_check_point;
@@ -45,18 +44,24 @@ int CheckPoint::_trigger(cp_info_t info, bool is_ocall_allowed) {
         and (_is_ignored_ocall(info)))
         return 1;// in case of nested ocall
 
-    if (is_ocall_allowed) sgx_thread_mutex_lock(&m_log_mutex);// thread operations need an ocall
+//    if (is_ocall_allowed)
+    sgx_thread_mutex_lock(&m_log_mutex);// thread operations need an ocall
     if (policy_check(info, is_ocall_allowed)) {
         log(info, is_ocall_allowed);
-        if (is_ocall_allowed) sgx_thread_mutex_unlock(&m_log_mutex);
+//        if (is_ocall_allowed)
+        sgx_thread_mutex_unlock(&m_log_mutex);
         return 1;// 1 means check ok
-    } else if (just_warning) {
-//        log(info, is_ocall_allowed);
-        if (is_ocall_allowed) sgx_thread_mutex_unlock(&m_log_mutex);
-        return -1;// -1 means just warning
     }
-    if (is_ocall_allowed) sgx_thread_mutex_unlock(&m_log_mutex);
+#ifdef WARNING
+    log(info, is_ocall_allowed);
+//    if (is_ocall_allowed)
+        sgx_thread_mutex_unlock(&m_log_mutex);
+    return -1;// -1 means just warning
+#else
+//    if (is_ocall_allowed)
+    sgx_thread_mutex_unlock(&m_log_mutex);
     return 0;// 0 means error
+#endif
 }
 
 bool CheckPoint::default_init_policy() {
@@ -108,7 +113,6 @@ bool CheckPoint::default_policy_check(cp_info_t info, cp_policy_t policy, std::v
                 while (not default_policy_filter(*log_it)) {
                     log_it++;
                 }
-
                 if (not _is_info_equal(*log_it, policy_it->info)) {
                     return false;
                 }
@@ -183,7 +187,6 @@ cp_info_t CheckPoint::str2info(char *str, const char *delimiter) {
 bool CheckPoint::get_func_info(void *addr, cp_info_t *info) {
     bool is_ecall;
     int idx = get_func_idx(addr, &is_ecall);
-
     if (idx == -1) return false;
 
     info->func_index = idx;

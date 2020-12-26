@@ -35,11 +35,14 @@ enclave {
     from "sgx_tstdc.edl" import *;
     from "sgx_tswitchless.edl" import *;
     from "sgx_tprotected_fs.edl" import *; // for log_file_mode
+    from "sgx_printf_dbg.edl" import *; // for printf_dbg usage
     trusted {
         public void ecall_repeat_ocalls(unsigned long nrepeats, int use_switchless);
 
         public void ecall_empty(void);
         public void ecall_empty_switchless(void) transition_using_threads;
+
+        public void ecall_show_log(void);
     };
 
     untrusted {

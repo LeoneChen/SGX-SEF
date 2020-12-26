@@ -1,7 +1,10 @@
 //
 // Created by leone on 2020/10/14.
 //
+#define DEBUG
+
 #include <printf_dbg.h> // Contain stdarg.h for va_list and extern "C" declaration
+
 #ifdef DEBUG
 #include <string.h> // for strlen
 #include <stdio.h> // for vsnprintf, BUFSIZ
@@ -22,4 +25,3 @@ int printf_dbg(const char *fmt, ...) {
     return (int) strnlen(buf, BUFSIZ - 1) + 1;
 #endif //DEBUG
 }
-

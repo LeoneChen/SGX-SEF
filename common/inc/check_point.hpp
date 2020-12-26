@@ -45,7 +45,7 @@ typedef struct {
 #define TRTS_OCALL_EXTRA_TABLE_T
 typedef struct {
     size_t nr_ocall;
-    trts_ocall_extra_info_t table[1];
+    trts_ocall_extra_info_t table[];
 } trts_ocall_extra_table_t;
 #endif //TRTS_OCALL_EXTRA_TABLE_T
 
@@ -62,7 +62,7 @@ typedef struct {
 #define ECALL_EXTRA_TABLE_T
 typedef struct {
     size_t nr_ecall;
-    ecall_extra_info_t table[1];
+    ecall_extra_info_t table[];
 } ecall_extra_table_t;
 #endif //ECALL_EXTRA_TABLE_T
 

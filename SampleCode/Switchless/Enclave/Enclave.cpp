@@ -30,7 +30,7 @@
  */
 
 #include "Enclave_t.h"
-
+#include "check_point.hpp"
 void ecall_repeat_ocalls(unsigned long nrepeats, int use_switchless) {
     sgx_status_t(*ocall_fn)(void) = use_switchless ? ocall_empty_switchless : ocall_empty;
     while (nrepeats--) {
@@ -40,3 +40,7 @@ void ecall_repeat_ocalls(unsigned long nrepeats, int use_switchless) {
 
 void ecall_empty(void) {}
 void ecall_empty_switchless(void) {}
+
+void ecall_show_log(){
+    g_check_point->show_log();
+}

@@ -34,8 +34,9 @@
 enclave {
     
     from "sgx_printf_dbg.edl" import *; // for printf_dbg usage
-    from "sgx_tstdc.edl" import *; // for pthread's sgx_thread_set_multiple_untrusted_events_ocall etc.
-    from "sgx_tprotected_fs.edl" import *;
+    from "sgx_tstdc.edl" import *; // for thread's operation etc.
+    from "sgx_tprotected_fs.edl" import *; // for check point log file mode
+
     include "user_types.h" /* buffer_t */
 
     /* Import ECALL/OCALL from sub-directory EDLs.

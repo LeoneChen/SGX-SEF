@@ -258,6 +258,7 @@ int SGX_CDECL main(int argc, char *argv[])
     benchmark_empty_ecall(0);
     printf("Done.\n");
 
+    ecall_show_log(global_eid);
     sgx_destroy_enclave(global_eid);
     return 0;
 }
