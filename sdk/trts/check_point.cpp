@@ -40,25 +40,22 @@ int CheckPoint::trigger(interface_type_t interface_type, int func_index, void *m
 }
 
 int CheckPoint::_trigger(cp_info_t info, bool is_ocall_allowed) {
+//    if (is_ocall_allowed)_show_info(info);
     if ((info.interface_type == INTERFACE_OCALL or info.interface_type == INTERFACE_OCALL_RET)
         and (_is_ignored_ocall(info)))
         return 1;// in case of nested ocall
 
-//    if (is_ocall_allowed)
     sgx_thread_mutex_lock(&m_log_mutex);// thread operations need an ocall
     if (policy_check(info, is_ocall_allowed)) {
         log(info, is_ocall_allowed);
-//        if (is_ocall_allowed)
         sgx_thread_mutex_unlock(&m_log_mutex);
         return 1;// 1 means check ok
     }
 #ifdef WARNING
     log(info, is_ocall_allowed);
-//    if (is_ocall_allowed)
-        sgx_thread_mutex_unlock(&m_log_mutex);
+    sgx_thread_mutex_unlock(&m_log_mutex);
     return -1;// -1 means just warning
 #else
-//    if (is_ocall_allowed)
     sgx_thread_mutex_unlock(&m_log_mutex);
     return 0;// 0 means error
 #endif

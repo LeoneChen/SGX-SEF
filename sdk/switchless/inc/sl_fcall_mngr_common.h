@@ -151,7 +151,7 @@ static inline void process_switchless_call(struct sl_siglines* siglns, uint32_t 
     }
 
 #ifdef SL_INSIDE_ENCLAVE /* trusted */
-    if(!g_check_point_trigger(INTERFACE_SL_ECALL, (int)func_id, call_task_u->func_data, 0)) {
+    if(!g_check_point_trigger(INTERFACE_SL_ECALL, (int)func_id, call_task_u->func_data, 1)) {
         call_task_u->ret_code = SGX_ERROR_CHECK_POINT;
         goto on_done;
     }
@@ -163,7 +163,7 @@ static inline void process_switchless_call(struct sl_siglines* siglns, uint32_t 
     call_task_u->ret_code = call_func_ptr(call_task_u->func_data);
 
 #ifdef SL_INSIDE_ENCLAVE /* trusted */
-    if(!g_check_point_trigger(INTERFACE_SL_ECALL_RET, (int)func_id, call_task_u->func_data, 0))  {
+    if(!g_check_point_trigger(INTERFACE_SL_ECALL_RET, (int)func_id, call_task_u->func_data, 1))  {
         call_task_u->ret_code = SGX_ERROR_CHECK_POINT;
         goto on_done;
     }
