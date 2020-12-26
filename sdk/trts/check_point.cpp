@@ -100,7 +100,7 @@ bool CheckPoint::default_policy_filter(cp_info_t info) {
     }
 }
 
-bool CheckPoint::default_policy_check(cp_info_t info, cp_policy_t policy, std::vector <cp_info_t> log,
+bool CheckPoint::default_policy_check(cp_info_t info, cp_policy_t policy, std::deque <cp_info_t> log,
                                       bool is_ocall_allowed) {
     UNUSED(is_ocall_allowed);
     if (policy.size() <= 1) return true;
@@ -117,8 +117,6 @@ bool CheckPoint::default_policy_check(cp_info_t info, cp_policy_t policy, std::v
                     return false;
                 }
             }
-            if (log.size() != 0 and log_it == log.rend() and policy_it != policy.rend())
-                return false;
             return true;
         }
     }
@@ -130,6 +128,9 @@ void CheckPoint::log(cp_info_t info, bool is_ocall_allowed) {
     if (is_ocall_allowed) _log_file_mod(info);// need an ocall, may cause problem
 #else //MEM_MODE
     UNUSED(is_ocall_allowed);
+    while (m_log.size() >= 500) {
+        m_log.pop_front();
+    }
     m_log.push_back(info);
 #endif //FILE_MODE
 

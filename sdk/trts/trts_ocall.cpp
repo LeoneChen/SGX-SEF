@@ -62,9 +62,9 @@ sgx_status_t sgx_ocall(const unsigned int index, void *ms)
     }
 
     // do sgx_ocall
-    if(not g_check_point->trigger(INTERFACE_OCALL, index, ms, true)) return SGX_ERROR_CHECK_POINT;
+    if(not g_check_point->trigger(INTERFACE_OCALL, index, ms)) return SGX_ERROR_CHECK_POINT;
     sgx_status_t status = do_ocall(index, ms);
-    if(not g_check_point->trigger(INTERFACE_OCALL_RET, index, ms, true)) return SGX_ERROR_CHECK_POINT;
+    if(not g_check_point->trigger(INTERFACE_OCALL_RET, index, ms)) return SGX_ERROR_CHECK_POINT;
     return status;
 }
 

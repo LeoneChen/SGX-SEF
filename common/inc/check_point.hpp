@@ -12,6 +12,7 @@
 #include <string> // for string
 #include <unordered_set>
 #include "sgx_thread.h" // for sgx_thread_mutex_t
+#include <deque> // for std::deque
 
 #ifndef INTERFACE_TYPE_T
 #define INTERFACE_TYPE_T
@@ -119,7 +120,7 @@ private:
 
     bool policy_check(cp_info_t info, bool is_ocall_allowed);
 
-    bool default_policy_check(cp_info_t info, cp_policy_t policy, std::vector <cp_info_t> log, bool is_ocall_allowed);
+    bool default_policy_check(cp_info_t info, cp_policy_t policy, std::deque <cp_info_t> log, bool is_ocall_allowed);
 
     bool default_policy_filter(cp_info_t info);
 
@@ -160,7 +161,7 @@ private:
     bool _is_info_equal(cp_info_t info1, cp_info_t info2);
 
     sgx_thread_mutex_t m_log_mutex = SGX_THREAD_MUTEX_INITIALIZER;
-    std::vector <cp_info_t> m_log;
+    std::deque <cp_info_t> m_log;
     cp_policy_t m_policy;
     bool m_policy_inititalized = false;
     SGX_FILE *m_log_fp = nullptr;
