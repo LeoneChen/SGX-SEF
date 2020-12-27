@@ -13,12 +13,12 @@
 
 #define UNUSED(val) (void)(val)
 #define CP_DEBUG
-//#define FILE_MODE// have some problem, maybe due to nested ocall or problem in ocall's implementation
+//#define FILE_MODE// take too much time expenditure, and it has some problem, maybe due to nested ocall or problem in ocall's implementation
 //#define WARNING
 
 static CheckPoint _check_point;
 CheckPoint *g_check_point = &_check_point;
-//it seems thread local storage in some position can't work well
+//it seems thread local storage(thread_local, __thread) in some position can't work well
 
 CheckPoint::CheckPoint() {
 #ifdef FILE_MODE
@@ -40,25 +40,44 @@ int CheckPoint::trigger(interface_type_t interface_type, int func_index, void *m
 }
 
 int CheckPoint::_trigger(cp_info_t info, bool is_ocall_allowed) {
-//    if (is_ocall_allowed)_show_info(info);
+//    if (is_ocall_allowed) _show_info(info);// ocall in some position will cause segment fault
     if ((info.interface_type == INTERFACE_OCALL or info.interface_type == INTERFACE_OCALL_RET)
         and (_is_ignored_ocall(info)))
-        return 1;// in case of nested ocall
+        return 1;// in case of nested ocall, otherwise may cause unexpected memory's modification
 
+    int ret = 0;
+
+    // I have no idea, in log mem mode, why mutex's ocall in position talked above don't cause segment fault
+    // but in file mode and in some position, it seem mutex's ocall will conflict with file's ocall
+    // (maybe any ocall, but printf's ocall seems don't conflict? )
+#ifdef FILE_MODE
+    if (is_ocall_allowed)
+#endif // FILE_MODE
     sgx_thread_mutex_lock(&m_log_mutex);// thread operations need an ocall
+
     if (policy_check(info, is_ocall_allowed)) {
+//        if (is_ocall_allowed) _show_info(info);//printf's ocall seems don't conflict with mutex's ocall
         log(info, is_ocall_allowed);
-        sgx_thread_mutex_unlock(&m_log_mutex);
-        return 1;// 1 means check ok
+        ret = 1;// 1 means check ok
+        goto exit;
     }
 #ifdef WARNING
     log(info, is_ocall_allowed);
-    sgx_thread_mutex_unlock(&m_log_mutex);
-    return -1;// -1 means just warning
+    ret = -1;// -1 means just warning
+    goto exit;
 #else
-    sgx_thread_mutex_unlock(&m_log_mutex);
-    return 0;// 0 means error
+    ret = 0;// 0 means error
+    goto exit;
 #endif
+
+    exit:
+
+#ifdef FILE_MODE
+    if (is_ocall_allowed)
+#endif // FILE_MODE
+    sgx_thread_mutex_unlock(&m_log_mutex);
+
+    return ret;
 }
 
 bool CheckPoint::default_init_policy() {
@@ -80,7 +99,13 @@ bool CheckPoint::policy_check(cp_info_t info, bool is_ocall_allowed) {
         }
         m_policy_inititalized = true;
     }
+#ifdef FILE_MODE
+    UNUSED(info);
+    UNUSED(is_ocall_allowed);
+    return true;// just for try
+#else // MEM_MODE
     return default_policy_check(info, m_policy, m_log, is_ocall_allowed);
+#endif // FILE_MODE
 }
 
 bool CheckPoint::_is_info_equal(cp_info_t info1, cp_info_t info2) {
@@ -306,8 +331,9 @@ void CheckPoint::show_info(interface_type_t interface_type, int func_index, void
 }
 
 void CheckPoint::_show_info(cp_info_t info) {
-    printf_dbg("[CP_INFO] InterfaceType: %s, FuncName: %s, FuncParam: %p\n",
-               itype2str(info.interface_type).c_str(), _get_func_name(info).c_str(), info.ms);
+    printf_dbg("[CP_INFO] InterfaceType: %s(%d), FuncName: %s(%d), FuncParam: %p\n",
+               itype2str(info.interface_type).c_str(), info.interface_type, _get_func_name(info).c_str(),
+               info.func_index, info.ms);
 }
 
 bool CheckPoint::is_ignored_ocall(interface_type_t interface_type, int func_index, void *ms) {
