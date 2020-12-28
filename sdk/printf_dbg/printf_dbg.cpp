@@ -1,7 +1,10 @@
 //
 // Created by leone on 2020/10/14.
 //
+
+#ifndef DEBUG
 #define DEBUG
+#endif
 
 #include <printf_dbg.h> // Contain stdarg.h for va_list and extern "C" declaration
 

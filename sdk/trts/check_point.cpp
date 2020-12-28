@@ -40,10 +40,11 @@ int CheckPoint::trigger(interface_type_t interface_type, int func_index, void *m
 }
 
 int CheckPoint::_trigger(cp_info_t info, bool is_ocall_allowed) {
-//    if (is_ocall_allowed) _show_info(info);// ocall in some position will cause segment fault
     if ((info.interface_type == INTERFACE_OCALL or info.interface_type == INTERFACE_OCALL_RET)
         and (_is_ignored_ocall(info)))
-        return 1;// in case of nested ocall, otherwise may cause unexpected memory's modification
+        return 1;// in case of nested ocall, otherwise may cause unexpected memory's modification(e.g. segmentation fault due to out-of-memory)
+
+    _show_info(info);// ocall in some position will cause segment fault
 
     int ret = 0;
 
