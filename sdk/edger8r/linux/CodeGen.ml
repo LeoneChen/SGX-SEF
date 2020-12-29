@@ -2277,14 +2277,16 @@ let gen_func_tproxy (ufunc: Ast.untrusted_func) (idx: int) =
                | Ast.PTPtr(ty, attr) -> acc ^ copy_memory ty attr declr) "" plist in
 
   let set_errno = if propagate_errno then "\t\terrno = ms->ocall_errno;\n" else "" in
-  let func_close = sprintf "%s%s%s\n%s%s%d%s%s\n"
+  let check_point_ocall_str = sprintf "if(!g_check_point_trigger(%s, %d, NULL, 1)) return SGX_ERROR_CHECK_POINT;\n"
+                                      (if ufunc.Ast.uf_is_switchless then "INTERFACE_SL_OCALL" else "INTERFACE_OCALL") idx in
+  let check_point_ocall_ret_str = sprintf "if(!g_check_point_trigger(%s, %d, NULL, 1)) return SGX_ERROR_CHECK_POINT;\n"
+                                    (if ufunc.Ast.uf_is_switchless then "INTERFACE_SL_OCALL_RET" else "INTERFACE_OCALL_RET") idx in
+  let func_close = sprintf "%s%s%s\n%s\t%s%s\n"
                            (handle_out_ptr fd.Ast.plist)
                            set_errno
                            "\t}"
                            (gen_ocfree fd.Ast.rtype fd.Ast.plist)
-                           "\tif(!g_check_point_trigger(INTERFACE_OCALL_RET, "
-                           idx
-                           ", NULL, 1)) return SGX_ERROR_CHECK_POINT;\n"
+                           check_point_ocall_ret_str
                            "\treturn status;\n}" in
   let sgx_ocall_fn = get_sgx_fname SGX_OCALL ufunc.Ast.uf_is_switchless in
   let ocall_null = sprintf "status = %s(%d, NULL);\n" sgx_ocall_fn idx in
@@ -2293,11 +2295,10 @@ let gen_func_tproxy (ufunc: Ast.untrusted_func) (idx: int) =
                               retval_name retval_name (mk_parm_accessor retval_name) in
   let func_body = ref [] in
     if (is_naked_func fd) && (propagate_errno = false) then
-        sprintf "%s\t%s\t%s%s" func_open local_vars ocall_null "\n\treturn status;\n}"
+        sprintf "%s\t%s\n\t%s\t%s\n\t%s%s" func_open check_point_ocall_str local_vars ocall_null check_point_ocall_ret_str "\n\treturn status;\n}"
     else
       begin
-        func_body := ("if(!g_check_point_trigger(INTERFACE_OCALL, " ^ string_of_int idx ^
-                     ", NULL, 1)) return SGX_ERROR_CHECK_POINT;\n") :: !func_body;
+        func_body := check_point_ocall_str :: !func_body;
         func_body := local_vars :: !func_body;
         func_body := ocalloc_ms_struct:: !func_body;
         List.iter (fun pd -> func_body := tproxy_fill_ms_field pd ufunc.Ast.uf_is_switchless :: !func_body ) fd.Ast.plist;

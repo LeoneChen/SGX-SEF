@@ -42,7 +42,6 @@
 #include <sl_debug.h>
 #include <sl_atomic.h>
 #include <rts.h>
-#include "check_point.h"
 
 
 /*=========================================================================
@@ -79,8 +78,6 @@ static int_type init_tswitchless_ocall_mngr(void* param)
 
 sgx_status_t sgx_ocall_switchless(const unsigned int index, void* ms) 
 {
-    if(!g_check_point_trigger(INTERFACE_SL_OCALL, (int)index, ms, 1)) return SGX_ERROR_CHECK_POINT;
-
     int error = 0;
 
     if (sgx_is_enclave_crashed())
@@ -116,13 +113,12 @@ sgx_status_t sgx_ocall_switchless(const unsigned int index, void* ms)
         goto on_fallback;
     
     lock_inc(&g_uswitchless_handle->us_uworkers.stats.processed);
-    if(!g_check_point_trigger(INTERFACE_SL_OCALL_RET, (int)index, ms, 1)) return SGX_ERROR_CHECK_POINT;
+
     return call_task.ret_code;
 
 on_fallback:
     lock_inc(&g_uswitchless_handle->us_uworkers.stats.missed);
     g_uswitchless_handle->us_has_new_ocall_fallback = 1;
-    if(!g_check_point_trigger(INTERFACE_SL_OCALL_FALLBACK, (int)index, ms, 1)) return SGX_ERROR_CHECK_POINT;
     return sgx_ocall(index, ms);
 }
 
