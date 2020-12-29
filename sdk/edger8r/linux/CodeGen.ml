@@ -99,9 +99,6 @@ let get_untrusted_func_names (ec: enclave_content) =
 let tf_list_to_fd_list (tfs: Ast.trusted_func list) =
   List.map (fun (tf: Ast.trusted_func) -> tf.Ast.tf_fdecl) tfs
 
-let tf_list_to_fd_is_switchless_list (tfs: Ast.trusted_func list) =
-  List.map (fun (tf: Ast.trusted_func) -> tf.Ast.tf_is_switchless) tfs
-
 let tf_list_to_priv_list (tfs: Ast.trusted_func list) =
   List.map is_priv_ecall tfs
 
@@ -2394,7 +2391,6 @@ let gen_trusted_source (ec: enclave_content) =
 )\n\
 \n"
   in
-  let tfds_is_switchless = tf_list_to_fd_is_switchless_list ec.tfunc_decls in
   let tbridge_list =
     let dummy_var = tbridge_gen_dummy_variable ec in
     List.map2 (fun tfd idx -> gen_func_tbridge tfd idx dummy_var)

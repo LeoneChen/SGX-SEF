@@ -156,7 +156,8 @@ private:
 
     bool _is_info_equal(cp_info_t info1, cp_info_t info2);
 
-    sgx_thread_mutex_t m_log_mutex = SGX_THREAD_MUTEX_INITIALIZER;
+    pthread_rwlock_t m_log_rwlock;
+    pthread_rwlock_t m_policy_rwlock;
     std::deque <cp_info_t> m_log;
     cp_policy_t m_policy;
     bool m_policy_inititalized = false;
