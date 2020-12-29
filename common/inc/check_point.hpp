@@ -160,7 +160,6 @@ private:
     std::deque <cp_info_t> m_log;
     cp_policy_t m_policy;
     bool m_policy_inititalized = false;
-    SGX_FILE *m_log_fp = nullptr;
     size_t m_policy_size = 0;
 
     std::unordered_set <std::string> m_ignored_ocall_list{

@@ -131,17 +131,20 @@ void CheckPoint::log(cp_info_t info) {
 }
 
 void CheckPoint::_log_file_mod(cp_info_t info) {
+    SGX_FILE *log_fp = nullptr;
+    int try_time = 10;
     do {
-        m_log_fp = sgx_fopen_auto_key("/home/leone/check_point.log", "a+");
-    } while (m_log_fp == nullptr and errno == EAGAIN);
+        log_fp = sgx_fopen_auto_key("/home/leone/check_point.log", "a+");
+    } while (log_fp == nullptr and errno == EAGAIN and try_time--);
+    if (log_fp == nullptr) return;
 
-    sgx_fseek(m_log_fp, 0L, SEEK_END);
+    sgx_fseek(log_fp, 0L, SEEK_END);
     std::string str = std::to_string(info.interface_type) + " " + std::to_string(info.func_index) + " " +
                       std::to_string((uint64_t) info.ms) + "\n";
-    sgx_fwrite(str.c_str(), sizeof(char), str.size(), m_log_fp);
-//    sgx_fflush(m_log_fp);
-    while (sgx_fclose(m_log_fp) != 0 and errno == EAGAIN);
-    m_log_fp = nullptr;
+    sgx_fwrite(str.c_str(), sizeof(char), str.size(), log_fp);
+
+    try_time = 10;
+    while (sgx_fclose(log_fp) != 0 and errno == EAGAIN and try_time--);
 }
 
 void CheckPoint::show_log(std::string title) {
@@ -160,17 +163,23 @@ void CheckPoint::show_log(std::string title) {
 void CheckPoint::_show_log_file_mode(std::string title) {
     printf_dbg("================LOG FILE MODE================\n");
 
+    SGX_FILE *log_fp = nullptr;
+    int try_time = 10;
     do {
-        m_log_fp = sgx_fopen_auto_key("/home/leone/check_point.log", "r");
-    } while (m_log_fp == nullptr and errno == EAGAIN);
+        log_fp = sgx_fopen_auto_key("/home/leone/check_point.log", "r");
+    } while (log_fp == nullptr and errno == EAGAIN and try_time--);
+    if (log_fp == nullptr) return;
 
-    sgx_fseek(m_log_fp, 0L, SEEK_SET);
+    sgx_fseek(log_fp, 0L, SEEK_SET);
     char line[BUFSIZ];
     do {
-        if (sgx_freadline(line, BUFSIZ, m_log_fp) == 0) break;
+        if (sgx_freadline(line, BUFSIZ, log_fp) == 0) break;
         this->_show_info(str2info(line, " ,"), title);
     } while (true);
-    while (sgx_fclose(m_log_fp) != 0 and errno == EAGAIN);
+
+    try_time = 10;
+    while (sgx_fclose(log_fp) != 0 and errno == EAGAIN and try_time--);
+
     printf_dbg("================LOG FILE MODE END================\n");
 }
 
