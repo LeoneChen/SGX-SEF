@@ -99,6 +99,9 @@ let get_untrusted_func_names (ec: enclave_content) =
 let tf_list_to_fd_list (tfs: Ast.trusted_func list) =
   List.map (fun (tf: Ast.trusted_func) -> tf.Ast.tf_fdecl) tfs
 
+let tf_list_to_fd_is_switchless_list (tfs: Ast.trusted_func list) =
+  List.map (fun (tf: Ast.trusted_func) -> tf.Ast.tf_is_switchless) tfs
+
 let tf_list_to_priv_list (tfs: Ast.trusted_func list) =
   List.map is_priv_ecall tfs
 
@@ -1752,43 +1755,48 @@ let gen_tbridge_local_vars (plist: Ast.pdecl list) =
     str ^ if deep_copy then "\tsize_t i = 0;\n" else ""
 
 (* It generates trusted bridge code for a trusted function. *)
-let gen_func_tbridge (fd: Ast.func_decl) (dummy_var: string) =
+let gen_func_tbridge (tfd: Ast.trusted_func) (idx: int) (dummy_var: string) =
   let func_open = sprintf "static sgx_status_t SGX_CDECL %s(void* %s)\n{\n"
-                          (mk_tbridge_name fd.Ast.fname)
+                          (mk_tbridge_name tfd.Ast.tf_fdecl.fname)
                           ms_ptr_name in
-  let local_vars = gen_tbridge_local_vars fd.Ast.plist in
+  let local_vars = gen_tbridge_local_vars tfd.Ast.tf_fdecl.plist in
   let func_close = "\treturn status;\n}\n" in
 
-  let ms_struct_name = mk_ms_struct_name fd.Ast.fname in
+  let ms_struct_name = mk_ms_struct_name tfd.Ast.tf_fdecl.fname in
   let declare_ms_ptr = sprintf "%s* %s = SGX_CAST(%s*, %s);"
                                ms_struct_name
                                ms_struct_val
                                ms_struct_name
                                ms_ptr_name in
 
-  let invoke_func   = gen_func_invoking fd mk_parm_name_tbridge in
+  let invoke_func   = gen_func_invoking tfd.Ast.tf_fdecl mk_parm_name_tbridge in
   let update_retval = sprintf "%s = %s"
                               (mk_parm_accessor retval_name)
                               invoke_func in
-
-    if is_naked_func fd then
+  let check_point_ecall_str = sprintf "if(!g_check_point_trigger(%s, %d, NULL, 1)) return SGX_ERROR_CHECK_POINT;\n"
+                                      (if tfd.Ast.tf_is_switchless then "INTERFACE_SL_ECALL" else "INTERFACE_ECALL") idx in
+  let check_point_ecall_ret_str = sprintf "if(!g_check_point_trigger(%s, %d, NULL, 1)) return SGX_ERROR_CHECK_POINT;\n"
+                                      (if tfd.Ast.tf_is_switchless then "INTERFACE_SL_ECALL_RET" else "INTERFACE_ECALL_RET") idx in
+    if is_naked_func tfd.Ast.tf_fdecl then
       let check_pms =
         sprintf "if (%s != NULL) return SGX_ERROR_INVALID_PARAMETER;" ms_ptr_name
       in
-        sprintf "%s%s%s\t%s\n\t%s\n%s" func_open local_vars dummy_var check_pms invoke_func func_close
+        sprintf "%s%s%s\t%s\n\t%s\t%s\n\t%s%s" func_open local_vars dummy_var check_pms check_point_ecall_str invoke_func check_point_ecall_ret_str func_close
     else
-      sprintf "%s%s\t%s\n%s\n%s%s\n%s\n\t%s\n%s\n%s\n%s%s"
+      sprintf "%s%s\t%s\n%s\n%s%s\n%s\n\t%s\t%s\n\t%s%s\n%s\n%s%s"
         func_open
-        (mk_check_pms fd.Ast.fname)
+        (mk_check_pms tfd.Ast.tf_fdecl.fname)
         declare_ms_ptr
         local_vars
-        (gen_check_tbridge_length_overflow fd.Ast.plist)
-        (gen_check_tbridge_ptr_parms fd.Ast.plist)
-        (gen_parm_ptr_direction_pre fd.Ast.plist)
-        (if fd.Ast.rtype <> Ast.Void then update_retval else invoke_func)
-        (gen_parm_ptr_direction_post fd.Ast.plist)
-        (gen_err_mark fd.Ast.plist)
-        (gen_parm_ptr_free_post fd.Ast.plist)
+        (gen_check_tbridge_length_overflow tfd.Ast.tf_fdecl.plist)
+        (gen_check_tbridge_ptr_parms tfd.Ast.tf_fdecl.plist)
+        (gen_parm_ptr_direction_pre tfd.Ast.tf_fdecl.plist)
+        (check_point_ecall_str)
+        (if tfd.Ast.tf_fdecl.rtype <> Ast.Void then update_retval else invoke_func)
+        (check_point_ecall_ret_str)
+        (gen_parm_ptr_direction_post tfd.Ast.tf_fdecl.plist)
+        (gen_err_mark tfd.Ast.tf_fdecl.plist)
+        (gen_parm_ptr_free_post tfd.Ast.tf_fdecl.plist)
         func_close
 
 let tproxy_fill_ms_field (pd: Ast.pdecl) (is_ocall_switchless: bool) =
@@ -2386,10 +2394,12 @@ let gen_trusted_source (ec: enclave_content) =
 )\n\
 \n"
   in
-  let trusted_fds = tf_list_to_fd_list ec.tfunc_decls in
+  let tfds_is_switchless = tf_list_to_fd_is_switchless_list ec.tfunc_decls in
   let tbridge_list =
     let dummy_var = tbridge_gen_dummy_variable ec in
-    List.map (fun tfd -> gen_func_tbridge tfd dummy_var) trusted_fds in
+    List.map2 (fun tfd idx -> gen_func_tbridge tfd idx dummy_var)
+        ec.tfunc_decls
+        (Util.mk_seq 0 (List.length ec.tfunc_decls - 1)) in
   let trts_policy_code = gen_trts_policy_code () in
   let trts_ocall_extra_table = gen_trts_ocall_extra_table ec in
   let ecall_extra_table = gen_ecall_extra_table ec.tfunc_decls in
