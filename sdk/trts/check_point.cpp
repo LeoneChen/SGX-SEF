@@ -13,7 +13,7 @@
 
 #define UNUSED(val) (void)(val)
 #define CP_DEBUG
-//#define FILE_MODE// take too much time expenditure, and it has some problem, maybe due to nested ocall or problem in ocall's implementation
+#define FILE_MODE// take too much time expenditure
 //#define WARNING
 
 static CheckPoint _check_point;
@@ -34,36 +34,26 @@ CheckPoint::~CheckPoint() {
 #endif //FILE_MODE
 };
 
-int CheckPoint::trigger(interface_type_t interface_type, int func_index, void *ms, bool is_ocall_allowed) {
+int CheckPoint::trigger(interface_type_t interface_type, int func_index, void *ms) {
     cp_info_t info = {interface_type, func_index, ms};
-    return _trigger(info, is_ocall_allowed);
+    return _trigger(info);
 }
 
-int CheckPoint::_trigger(cp_info_t info, bool is_ocall_allowed) {
+int CheckPoint::_trigger(cp_info_t info) {
     if ((info.interface_type == INTERFACE_OCALL or info.interface_type == INTERFACE_OCALL_RET)
         and (_is_ignored_ocall(info)))
-        return 1;// in case of nested ocall, otherwise may cause unexpected memory's modification(e.g. segmentation fault due to out-of-memory)
+        return 1;// in case of nested ocall
 
-//    _show_info(info);// ocall in some position will cause segment fault
-
+    _show_info(info);
     int ret = 0;
-
-    // I have no idea, in log mem mode, why mutex's ocall in position talked above don't cause segment fault
-    // but in file mode and in some position, it seem mutex's ocall will conflict with file's ocall
-    // (maybe any ocall, but printf's ocall seems don't conflict? )
-#ifdef FILE_MODE
-    if (is_ocall_allowed)
-#endif // FILE_MODE
     sgx_thread_mutex_lock(&m_log_mutex);// thread operations need an ocall
-
-    if (policy_check(info, is_ocall_allowed)) {
-//        if (is_ocall_allowed) _show_info(info);//printf's ocall seems don't conflict with mutex's ocall
-        log(info, is_ocall_allowed);
+    if (policy_check(info)) {
+        log(info);
         ret = 1;// 1 means check ok
         goto exit;
     }
 #ifdef WARNING
-    log(info, is_ocall_allowed);
+    log(info);
     ret = -1;// -1 means just warning
     goto exit;
 #else
@@ -72,12 +62,7 @@ int CheckPoint::_trigger(cp_info_t info, bool is_ocall_allowed) {
 #endif
 
     exit:
-
-#ifdef FILE_MODE
-    if (is_ocall_allowed)
-#endif // FILE_MODE
     sgx_thread_mutex_unlock(&m_log_mutex);
-
     return ret;
 }
 
@@ -93,7 +78,7 @@ bool CheckPoint::default_init_policy() {
     return true;
 }
 
-bool CheckPoint::policy_check(cp_info_t info, bool is_ocall_allowed) {
+bool CheckPoint::policy_check(cp_info_t info) {
     if (not m_policy_inititalized) {
         if (not default_init_policy()) {
             return false;
@@ -102,10 +87,9 @@ bool CheckPoint::policy_check(cp_info_t info, bool is_ocall_allowed) {
     }
 #ifdef FILE_MODE
     UNUSED(info);
-    UNUSED(is_ocall_allowed);
     return true;// just for try
 #else // MEM_MODE
-    return default_policy_check(info, m_policy, m_log, is_ocall_allowed);
+    return default_policy_check(info, m_policy, m_log);
 #endif // FILE_MODE
 }
 
@@ -123,10 +107,9 @@ bool CheckPoint::default_policy_filter(cp_info_t info) {
     }
 }
 
-bool CheckPoint::default_policy_check(cp_info_t info, cp_policy_t policy, std::deque <cp_info_t> log,
-                                      bool is_ocall_allowed) {
-    UNUSED(is_ocall_allowed);
+bool CheckPoint::default_policy_check(cp_info_t info, cp_policy_t policy, std::deque <cp_info_t> log) {
     if (policy.size() <= 1) return true;
+
     auto policy_it = policy.rbegin();
     for (; policy_it != policy.rend(); policy_it++) {
         if (default_policy_filter(policy_it->info) and _is_info_equal(info, policy_it->info)) {
@@ -146,17 +129,15 @@ bool CheckPoint::default_policy_check(cp_info_t info, cp_policy_t policy, std::d
     return true;
 }
 
-void CheckPoint::log(cp_info_t info, bool is_ocall_allowed) {
+void CheckPoint::log(cp_info_t info) {
 #ifdef FILE_MODE
-    if (is_ocall_allowed) _log_file_mod(info);// need an ocall, may cause problem
+    _log_file_mod(info);
 #else //MEM_MODE
-    UNUSED(is_ocall_allowed);
     while (m_log.size() >= 500) {
         m_log.pop_front();
     }
     m_log.push_back(info);
 #endif //FILE_MODE
-
 }
 
 void CheckPoint::_log_file_mod(cp_info_t info) {

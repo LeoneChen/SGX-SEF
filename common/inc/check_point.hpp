@@ -101,11 +101,7 @@ typedef std::vector <cp_policy_entry_t> cp_policy_t;
 
 class CheckPoint {
 public:
-    // Since some place in the trts cannot do an ocall,
-    // which is because of ocall may modify Enclave thread's stack
-    // (I think it's due to some bad context restore during ocall returning).
-    // So I defined "is_ocall_allowed" parameter to tell whether an ocall in trigger func is allowed.
-    int trigger(interface_type_t interface_type, int func_index, void *ms, bool is_ocall_allowed = false);
+    int trigger(interface_type_t interface_type, int func_index, void *ms);
 
     void show_log();
 
@@ -114,17 +110,17 @@ public:
     ~CheckPoint();
 
 private:
-    int _trigger(cp_info_t info, bool is_ocall_allowed);
+    int _trigger(cp_info_t info);
 
     bool default_init_policy();
 
-    bool policy_check(cp_info_t info, bool is_ocall_allowed);
+    bool policy_check(cp_info_t info);
 
-    bool default_policy_check(cp_info_t info, cp_policy_t policy, std::deque <cp_info_t> log, bool is_ocall_allowed);
+    bool default_policy_check(cp_info_t info, cp_policy_t policy, std::deque <cp_info_t> log);
 
     bool default_policy_filter(cp_info_t info);
 
-    void log(cp_info_t info, bool is_ocall_allowed);
+    void log(cp_info_t info);
 
     void _log_file_mod(cp_info_t info);
 
@@ -172,7 +168,7 @@ private:
             "sgx_thread_set_untrusted_event_ocall", "sgx_thread_setwait_untrusted_events_ocall",
             "u_sgxprotectedfs_exclusive_file_open", "u_sgxprotectedfs_fwrite_node",
             "u_sgxprotectedfs_check_if_file_exists", "u_sgxprotectedfs_fread_node",
-            "u_sgxprotectedfs_fwrite_recovery_node",
+            "u_sgxprotectedfs_fwrite_recovery_node", "u_sgxprotectedfs_fflush",
     };
 };
 

@@ -1773,9 +1773,9 @@ let gen_func_tbridge (tfd: Ast.trusted_func) (idx: int) (dummy_var: string) =
   let update_retval = sprintf "%s = %s"
                               (mk_parm_accessor retval_name)
                               invoke_func in
-  let check_point_ecall_str = sprintf "if(!g_check_point_trigger(%s, %d, NULL, 1)) return SGX_ERROR_CHECK_POINT;\n"
+  let check_point_ecall_str = sprintf "if(!g_check_point_trigger(%s, %d, NULL)) return SGX_ERROR_CHECK_POINT;\n"
                                       (if tfd.Ast.tf_is_switchless then "INTERFACE_SL_ECALL" else "INTERFACE_ECALL") idx in
-  let check_point_ecall_ret_str = sprintf "if(!g_check_point_trigger(%s, %d, NULL, 1)) return SGX_ERROR_CHECK_POINT;\n"
+  let check_point_ecall_ret_str = sprintf "if(!g_check_point_trigger(%s, %d, NULL)) return SGX_ERROR_CHECK_POINT;\n"
                                       (if tfd.Ast.tf_is_switchless then "INTERFACE_SL_ECALL_RET" else "INTERFACE_ECALL_RET") idx in
     if is_naked_func tfd.Ast.tf_fdecl then
       let check_pms =
@@ -2285,9 +2285,9 @@ let gen_func_tproxy (ufunc: Ast.untrusted_func) (idx: int) =
                | Ast.PTPtr(ty, attr) -> acc ^ copy_memory ty attr declr) "" plist in
 
   let set_errno = if propagate_errno then "\t\terrno = ms->ocall_errno;\n" else "" in
-  let check_point_ocall_str = sprintf "if(!g_check_point_trigger(%s, %d, NULL, 1)) return SGX_ERROR_CHECK_POINT;\n"
+  let check_point_ocall_str = sprintf "if(!g_check_point_trigger(%s, %d, NULL)) return SGX_ERROR_CHECK_POINT;\n"
                                       (if ufunc.Ast.uf_is_switchless then "INTERFACE_SL_OCALL" else "INTERFACE_OCALL") idx in
-  let check_point_ocall_ret_str = sprintf "if(!g_check_point_trigger(%s, %d, NULL, 1)) return SGX_ERROR_CHECK_POINT;\n"
+  let check_point_ocall_ret_str = sprintf "if(!g_check_point_trigger(%s, %d, NULL)) return SGX_ERROR_CHECK_POINT;\n"
                                     (if ufunc.Ast.uf_is_switchless then "INTERFACE_SL_OCALL_RET" else "INTERFACE_OCALL_RET") idx in
   let func_close = sprintf "%s%s%s\n%s\t%s%s\n"
                            (handle_out_ptr fd.Ast.plist)

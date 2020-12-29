@@ -71,7 +71,7 @@ typedef struct policy_entry {
 extern "C" {
 #endif
 
-int g_check_point_trigger(interface_type_t interface_type, int func_index, void *ms, int is_ocall_allowed);
+int g_check_point_trigger(interface_type_t interface_type, int func_index, void *ms);
 
 #ifdef __cplusplus
 }
