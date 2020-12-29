@@ -13,7 +13,7 @@
 
 #define UNUSED(val) (void)(val)
 #define CP_DEBUG
-#define FILE_MODE// take too much time expenditure
+//#define FILE_MODE// take too much time, an always-on file descriptor seem can't log all info correctly
 //#define WARNING
 
 static CheckPoint _check_point;
@@ -21,18 +21,10 @@ CheckPoint *g_check_point = &_check_point;
 //it seems thread local storage(thread_local, __thread) in some position can't work well
 
 CheckPoint::CheckPoint() {
-#ifdef FILE_MODE
-    do {
-        m_log_fp = sgx_fopen_auto_key("/home/leone/check_point.log", "w+");
-    } while (m_log_fp == nullptr and errno == EAGAIN);
-#endif //FILE_MODE
+    int try_time = 10;
+    while (sgx_remove("/home/leone/check_point.log") != 0 and errno == EAGAIN and
+           try_time--); // remove log file firstly
 }
-
-CheckPoint::~CheckPoint() {
-#ifdef FILE_MODE
-    while (sgx_fclose(m_log_fp) != 0 and errno == EAGAIN);
-#endif //FILE_MODE
-};
 
 int CheckPoint::trigger(interface_type_t interface_type, int func_index, void *ms) {
     cp_info_t info = {interface_type, func_index, ms};
@@ -44,7 +36,6 @@ int CheckPoint::_trigger(cp_info_t info) {
         and (_is_ignored_ocall(info)))
         return 1;// in case of nested ocall
 
-    _show_info(info);
     int ret = 0;
     sgx_thread_mutex_lock(&m_log_mutex);// thread operations need an ocall
     if (policy_check(info)) {
@@ -60,7 +51,6 @@ int CheckPoint::_trigger(cp_info_t info) {
     ret = 0;// 0 means error
     goto exit;
 #endif
-
     exit:
     sgx_thread_mutex_unlock(&m_log_mutex);
     return ret;
@@ -133,7 +123,7 @@ void CheckPoint::log(cp_info_t info) {
 #ifdef FILE_MODE
     _log_file_mod(info);
 #else //MEM_MODE
-    while (m_log.size() >= 500) {
+    while (m_log.size() >= 500) { //epc size is limited
         m_log.pop_front();
     }
     m_log.push_back(info);
@@ -141,36 +131,46 @@ void CheckPoint::log(cp_info_t info) {
 }
 
 void CheckPoint::_log_file_mod(cp_info_t info) {
+    do {
+        m_log_fp = sgx_fopen_auto_key("/home/leone/check_point.log", "a+");
+    } while (m_log_fp == nullptr and errno == EAGAIN);
+
     sgx_fseek(m_log_fp, 0L, SEEK_END);
     std::string str = std::to_string(info.interface_type) + " " + std::to_string(info.func_index) + " " +
                       std::to_string((uint64_t) info.ms) + "\n";
     sgx_fwrite(str.c_str(), sizeof(char), str.size(), m_log_fp);
-    sgx_fflush(m_log_fp);
+//    sgx_fflush(m_log_fp);
+    while (sgx_fclose(m_log_fp) != 0 and errno == EAGAIN);
+    m_log_fp = nullptr;
 }
 
-void CheckPoint::show_log() {
+void CheckPoint::show_log(std::string title) {
 #ifdef FILE_MODE
-    _show_log_file_mode();
+    _show_log_file_mode(title);
 #else //MEM_MODE
     printf_dbg("================LOG MEM MODE================\n");
 
     for (auto info:m_log)
-        _show_info(info);
+        _show_info(info, title);
 
     printf_dbg("================LOG MEM MODE END================\n");
 #endif //FILE_MODE
 }
 
-void CheckPoint::_show_log_file_mode() {
+void CheckPoint::_show_log_file_mode(std::string title) {
     printf_dbg("================LOG FILE MODE================\n");
+
+    do {
+        m_log_fp = sgx_fopen_auto_key("/home/leone/check_point.log", "r");
+    } while (m_log_fp == nullptr and errno == EAGAIN);
 
     sgx_fseek(m_log_fp, 0L, SEEK_SET);
     char line[BUFSIZ];
     do {
         if (sgx_freadline(line, BUFSIZ, m_log_fp) == 0) break;
-        this->_show_info(str2info(line, " ,"));
+        this->_show_info(str2info(line, " ,"), title);
     } while (true);
-
+    while (sgx_fclose(m_log_fp) != 0 and errno == EAGAIN);
     printf_dbg("================LOG FILE MODE END================\n");
 }
 
@@ -307,13 +307,13 @@ std::string CheckPoint::itype2str(interface_type_t interface_type) {
     }
 }
 
-void CheckPoint::show_info(interface_type_t interface_type, int func_index, void *ms) {
+void CheckPoint::show_info(interface_type_t interface_type, int func_index, void *ms, std::string title) {
     cp_info_t info = {interface_type, func_index, ms};
-    _show_info(info);
+    _show_info(info, title);
 }
 
-void CheckPoint::_show_info(cp_info_t info) {
-    printf_dbg("[CP_INFO] InterfaceType: %s(%d), FuncName: %s(%d), FuncParam: %p\n",
+void CheckPoint::_show_info(cp_info_t info, std::string title) {
+    printf_dbg("[%s] InterfaceType: %s(%d), FuncName: %s(%d), FuncParam: %p\n", title.c_str(),
                itype2str(info.interface_type).c_str(), info.interface_type, _get_func_name(info).c_str(),
                info.func_index, info.ms);
 }

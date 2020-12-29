@@ -103,11 +103,11 @@ class CheckPoint {
 public:
     int trigger(interface_type_t interface_type, int func_index, void *ms);
 
-    void show_log();
+    void show_log(std::string title = "CP_INFO");
 
     CheckPoint();
 
-    ~CheckPoint();
+    ~CheckPoint(){};// Class's Destructor Function in Enclave is never triggered
 
 private:
     int _trigger(cp_info_t info);
@@ -124,7 +124,7 @@ private:
 
     void _log_file_mod(cp_info_t info);
 
-    void _show_log_file_mode();
+    void _show_log_file_mode(std::string title = "CP_INFO");
 
     cp_info_t str2info(char *str, const char *limiter);
 
@@ -146,9 +146,9 @@ private:
 
     std::string itype2str(interface_type_t interface_type);
 
-    void show_info(interface_type_t interface_type, int func_index, void *ms);
+    void show_info(interface_type_t interface_type, int func_index, void *ms, std::string title = "CP_INFO");
 
-    void _show_info(cp_info_t info);
+    void _show_info(cp_info_t info, std::string title = "CP_INFO");
 
     bool is_ignored_ocall(interface_type_t interface_type, int func_index, void *ms);
 
@@ -164,11 +164,13 @@ private:
     size_t m_policy_size = 0;
 
     std::unordered_set <std::string> m_ignored_ocall_list{
-            "print_string_dbg_ocall", "sgx_thread_wait_untrusted_event_ocall",
-            "sgx_thread_set_untrusted_event_ocall", "sgx_thread_setwait_untrusted_events_ocall",
-            "u_sgxprotectedfs_exclusive_file_open", "u_sgxprotectedfs_fwrite_node",
-            "u_sgxprotectedfs_check_if_file_exists", "u_sgxprotectedfs_fread_node",
-            "u_sgxprotectedfs_fwrite_recovery_node", "u_sgxprotectedfs_fflush",
+            "print_string_dbg_ocall",
+            "sgx_thread_wait_untrusted_event_ocall", "sgx_thread_set_untrusted_event_ocall",
+            "sgx_thread_setwait_untrusted_events_ocall", "sgx_thread_set_multiple_untrusted_events_ocall",
+            "u_sgxprotectedfs_exclusive_file_open", "u_sgxprotectedfs_check_if_file_exists",
+            "u_sgxprotectedfs_fread_node", "u_sgxprotectedfs_fwrite_node", "u_sgxprotectedfs_fclose",
+            "u_sgxprotectedfs_fflush", "u_sgxprotectedfs_remove", "u_sgxprotectedfs_recovery_file_open",
+            "u_sgxprotectedfs_fwrite_recovery_node", "u_sgxprotectedfs_do_file_recovery"
     };
 };
 

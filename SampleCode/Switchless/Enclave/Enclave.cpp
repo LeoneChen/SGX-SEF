@@ -60,5 +60,5 @@ int printf(const char* fmt, ...)
 }
 
 void ecall_show_log(){
-    g_check_point->show_log();
+    g_check_point->show_log("Switchless SampleCode");
 }
