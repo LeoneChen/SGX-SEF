@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <sys/time.h>
 
 # include <unistd.h>
 # include <pwd.h>
@@ -190,7 +191,10 @@ int SGX_CDECL main(int argc, char *argv[])
         getchar();
         return -1; 
     }
- 
+
+    struct timeval tval_before, tval_after, tval_result;
+    gettimeofday(&tval_before, NULL);
+
     /* Utilize edger8r attributes */
     edger8r_array_attributes();
     edger8r_pointer_attributes();
@@ -201,11 +205,18 @@ int SGX_CDECL main(int argc, char *argv[])
     ecall_libc_functions();
     ecall_libcxx_functions();
     ecall_thread_functions();
+
+    gettimeofday(&tval_after, NULL);
+    timersub(&tval_after, &tval_before, &tval_result);
+
     ecall_show_log(global_eid);
+
     /* Destroy the enclave */
     sgx_destroy_enclave(global_eid);
     
     printf("Info: SampleEnclave successfully returned.\n");
+
+    printf("\nTime elapsed: %ld.%06ld seconds\n\n", (long int)tval_result.tv_sec, (long int)tval_result.tv_usec);
 
     printf("Enter a character before exit ...\n");
     getchar();

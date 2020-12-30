@@ -9,18 +9,22 @@
 #include <printf_dbg.h>
 #include "check_point.hpp"
 
-#define UNUSED(val) (void)(val)
-#define CP_DEBUG
 //#define FILE_MODE// take too much time, an always-on file descriptor seem can't log all info correctly
 //#define WARNING
+//#define CLOSE_CP
+#define APPLY_LOCK
+#define UNUSED(val) (void)(val)
 
 static CheckPoint _check_point;
 CheckPoint *g_check_point = &_check_point;
 //it seems thread local storage(thread_local, __thread) in some position can't work well
 
 CheckPoint::CheckPoint() {
+#ifdef APPLY_LOCK
     pthread_rwlock_init(&m_log_rwlock, NULL);
     pthread_rwlock_init(&m_policy_rwlock, NULL);
+#endif
+
 #ifdef FILE_MODE
     int try_time = 10;
     while (sgx_remove("/home/leone/check_point.log") != 0 and errno == EAGAIN and
@@ -29,8 +33,15 @@ CheckPoint::CheckPoint() {
 }
 
 int CheckPoint::trigger(interface_type_t interface_type, int func_index, void *ms) {
+#ifdef CLOSE_CP
+    UNUSED(interface_type);
+    UNUSED(func_index);
+    UNUSED(ms);
+    return 1;
+#else
     cp_info_t info = {interface_type, func_index, ms};
     return _trigger(info);
+#endif
 }
 
 int CheckPoint::_trigger(cp_info_t info) {
@@ -64,12 +75,18 @@ bool CheckPoint::default_init_policy() {
 
 bool CheckPoint::policy_check(cp_info_t info) {
     if (not m_policy_inititalized) {
+#ifdef APPLY_LOCK
         pthread_rwlock_wrlock(&m_policy_rwlock);
+#endif
         if (not default_init_policy()) {
+#ifdef APPLY_LOCK
             pthread_rwlock_unlock(&m_policy_rwlock);
+#endif
             return false;
         }
+#ifdef APPLY_LOCK
         pthread_rwlock_unlock(&m_policy_rwlock);
+#endif
         m_policy_inititalized = true;
     }
 #ifdef FILE_MODE
@@ -77,11 +94,15 @@ bool CheckPoint::policy_check(cp_info_t info) {
     return true;// just for try
 #else // MEM_MODE
     bool ret = false;
+#ifdef APPLY_LOCK
     pthread_rwlock_rdlock(&m_log_rwlock);
     pthread_rwlock_rdlock(&m_policy_rwlock);
+#endif
     ret = default_policy_check(info, m_policy, m_log);
+#ifdef APPLY_LOCK
     pthread_rwlock_unlock(&m_policy_rwlock);
     pthread_rwlock_unlock(&m_log_rwlock);
+#endif
     return ret;
 #endif // FILE_MODE
 }
@@ -123,16 +144,22 @@ bool CheckPoint::default_policy_check(cp_info_t info, cp_policy_t policy, std::d
 }
 
 void CheckPoint::log(cp_info_t info) {
+#ifdef APPLY_LOCK
     pthread_rwlock_wrlock(&m_log_rwlock);
+#endif
+
 #ifdef FILE_MODE
     _log_file_mod(info);
 #else //MEM_MODE
-    while (m_log.size() >= 500) { //epc size is limited
+    while (m_log.size() >= 100) { //epc size is limited
         m_log.pop_front();
     }
     m_log.push_back(info);
 #endif //FILE_MODE
+
+#ifdef APPLY_LOCK
     pthread_rwlock_unlock(&m_log_rwlock);
+#endif
 }
 
 void CheckPoint::_log_file_mod(cp_info_t info) {
@@ -153,7 +180,10 @@ void CheckPoint::_log_file_mod(cp_info_t info) {
 }
 
 void CheckPoint::show_log(std::string title) {
+#ifdef APPLY_LOCK
     pthread_rwlock_rdlock(&m_log_rwlock);
+#endif
+
 #ifdef FILE_MODE
     _show_log_file_mode(title);
 #else //MEM_MODE
@@ -164,7 +194,9 @@ void CheckPoint::show_log(std::string title) {
 
     printf_dbg("================LOG MEM MODE END================\n");
 #endif //FILE_MODE
+#ifdef APPLY_LOCK
     pthread_rwlock_unlock(&m_log_rwlock);
+#endif
 }
 
 void CheckPoint::_show_log_file_mode(std::string title) {
