@@ -8,7 +8,7 @@ sudo cp external/toolset/ubuntu20.04/{as,ld,ld.gold,objdump} /usr/local/bin
 
 if [ $(grep -Ec "^[^#].*sgx_debian_local_repo" /etc/apt/sources.list) -eq 0 ]; then
   echo "add apt source"
-  sudo sh -c "echo \"deb [trusted=yes arch=amd64] file:/home/leone/文档/linux-sgx/linux/installer/deb/sgx_debian_local_repo focal main\" >>/etc/apt/sources.list"
+  sudo sh -c "echo \"deb [trusted=yes arch=amd64] file:/home/leone/文档/SGX-SEF/linux/installer/deb/sgx_debian_local_repo focal main\" >>/etc/apt/sources.list"
 else
   echo "already added apt source"
 fi
