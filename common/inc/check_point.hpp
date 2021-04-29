@@ -11,61 +11,9 @@
 //#include <trts_internal_types.h> // for struct ecall_extra_table_t etc.
 #include <string> // for string
 #include <unordered_set>
-#include "sgx_thread.h" // for sgx_thread_mutex_t
 #include <deque> // for std::deque
-
-#ifndef INTERFACE_TYPE_T
-#define INTERFACE_TYPE_T
-typedef enum interface_type {
-    INTERFACE_ENTER_ENCLAVE = 0x00,
-    INTERFACE_EXIT_ENCLAVE = 0x01,
-    INTERFACE_ECALL = 0x02,
-    INTERFACE_ECALL_RET = 0x03,
-    INTERFACE_SL_ECALL = 0x04,
-    INTERFACE_SL_ECALL_RET = 0x05,
-    INTERFACE_OCALL = 0x06,
-    INTERFACE_OCALL_RET = 0x07,
-    INTERFACE_SL_OCALL = 0x08,
-    INTERFACE_SL_OCALL_RET = 0x09,
-    INTERFACE_SL_OCALL_FALLBACK = 0x0a,
-    INTERFACE_AEX = 0x0b,
-    INTERFACE_AEX_FIN = 0x0c,
-} interface_type_t;
-#endif //INTERFACE_TYPE_T
-
-#ifndef TRTS_OCALL_EXTRA_INFO_T
-#define TRTS_OCALL_EXTRA_INFO_T
-typedef struct {
-    void *ocall_func;
-    char *ocall_name;
-    char *ubridge_name;
-} trts_ocall_extra_info_t;
-#endif //TRTS_OCALL_EXTRA_INFO_T
-
-#ifndef TRTS_OCALL_EXTRA_TABLE_T
-#define TRTS_OCALL_EXTRA_TABLE_T
-typedef struct {
-    size_t nr_ocall;
-    trts_ocall_extra_info_t table[];
-} trts_ocall_extra_table_t;
-#endif //TRTS_OCALL_EXTRA_TABLE_T
-
-#ifndef ECALL_EXTRA_INFO_T
-#define ECALL_EXTRA_INFO_T
-typedef struct {
-    void *ecall_func;
-    char *ecall_name;
-    char *tbridge_name;
-} ecall_extra_info_t;
-#endif //ECALL_EXTRA_INFO_T
-
-#ifndef ECALL_EXTRA_TABLE_T
-#define ECALL_EXTRA_TABLE_T
-typedef struct {
-    size_t nr_ecall;
-    ecall_extra_info_t table[];
-} ecall_extra_table_t;
-#endif //ECALL_EXTRA_TABLE_T
+#include "sgx_thread.h" // for sgx_thread_mutex_t
+#include "check_point.h"
 
 #ifndef CP_INFO_T
 #define CP_INFO_T
@@ -75,26 +23,6 @@ typedef struct cp_info {
     void *ms;
 } cp_info_t;
 #endif //CP_INFO_T
-
-#ifndef CP_POLICY_ENTRY_T
-#define CP_POLICY_ENTRY_T
-typedef struct cp_policy_entry {
-    cp_info_t info;
-} cp_policy_entry_t;
-#endif //CP_POLICY_ENTRY_T
-
-#ifndef POLICY_ENTRY_T
-#define POLICY_ENTRY_T
-typedef struct policy_entry {
-    void *func_addr;
-} policy_entry_t;
-#endif //POLICY_ENTRY_T
-
-#ifndef CP_POLICY_T
-#define CP_POLICY_T
-typedef std::vector <cp_policy_entry_t> cp_policy_t;
-#endif //CP_POLICY_T
-
 
 #ifndef CLASS_CHECK_POINT
 #define CLASS_CHECK_POINT
@@ -112,13 +40,9 @@ public:
 private:
     int _trigger(cp_info_t info);
 
-    bool default_init_policy();
-
     bool policy_check(cp_info_t info);
 
-    bool default_policy_check(cp_info_t info, cp_policy_t policy, std::deque <cp_info_t> log);
-
-    bool default_policy_filter(cp_info_t info);
+    bool policy_check_user(cp_info_t info, std::deque <cp_info_t> log);
 
     void log(cp_info_t info);
 
@@ -157,11 +81,7 @@ private:
     bool _is_info_equal(cp_info_t info1, cp_info_t info2);
 
     pthread_rwlock_t m_log_rwlock;
-    pthread_rwlock_t m_policy_rwlock;
     std::deque <cp_info_t> m_log;
-    cp_policy_t m_policy;
-    bool m_policy_inititalized = false;
-    size_t m_policy_size = 0;
 
     std::unordered_set <std::string> m_ignored_ocall_list{
             "print_string_dbg_ocall",
@@ -179,7 +99,5 @@ private:
 extern CheckPoint *g_check_point;
 extern ecall_extra_table_t g_ecall_extra_table;
 extern trts_ocall_extra_table_t g_trts_ocall_extra_table;
-extern size_t g_policy_size;
-extern policy_entry_t g_policy[];
 
 #endif //CHECK_POINT_HPP

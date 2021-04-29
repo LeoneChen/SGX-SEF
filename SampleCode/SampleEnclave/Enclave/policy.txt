@@ -1,7 +1,0 @@
-ecall_array_in
-ecall_array_out
-ecall_array_in_out
-ecall_array_isary
-ecall_pointer_user_check
-ocall_print_string
-ecall_pointer_in

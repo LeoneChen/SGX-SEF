@@ -513,36 +513,6 @@ let gen_parm_retval (rt: Ast.atype) =
 
 (* ---------------------------------------------------------------------- *)
 
-(* It generate policy. *)
-let gen_trts_policy_code () =
-    let trts_policy_code = Buffer.create 256 in
-    let count = ref 0 in
-    let _gen_trts_policy_code (fname: string) =
-        if(Sys.file_exists(fname)) then
-            let ic = open_in fname in
-            try
-                while true do
-                    let line = input_line ic in
-                    Buffer.add_string trts_policy_code ("\t{" ^ line ^ "},\n");
-                    count := !count+1;
-                done
-            with
-                e -> close_in_noerr ic
-    in
-    Buffer.add_string trts_policy_code ("#ifndef POLICY_ENTRY_T\n\
-                                        #define POLICY_ENTRY_T\n\
-                                        typedef struct policy_entry {\n\
-                                        \tvoid* func_addr;\n\
-                                        } policy_entry_t;\n\
-                                        #endif //POLICY_ENTRY_T\n\
-                                        \npolicy_entry_t g_policy[] = {\n");
-    _gen_trts_policy_code "policy.txt";
-    Buffer.add_string trts_policy_code ("};\n\n\
-                                    size_t g_policy_size = " ^ string_of_int !count ^ ";\n\n");
-    Buffer.contents trts_policy_code
-
-(* ---------------------------------------------------------------------- *)
-
 (* It generates table of OCALL additional info in trts. *)
 let gen_trts_ocall_extra_table (ec: enclave_content) =
     let ocall_names = List.map (fun (uf: Ast.untrusted_func) ->
@@ -2396,7 +2366,6 @@ let gen_trusted_source (ec: enclave_content) =
     List.map2 (fun tfd idx -> gen_func_tbridge tfd idx dummy_var)
         ec.tfunc_decls
         (Util.mk_seq 0 (List.length ec.tfunc_decls - 1)) in
-  let trts_policy_code = gen_trts_policy_code () in
   let trts_ocall_extra_table = gen_trts_ocall_extra_table ec in
   let ecall_extra_table = gen_ecall_extra_table ec.tfunc_decls in
   let ecall_table = gen_ecall_table ec.tfunc_decls in
@@ -2409,7 +2378,7 @@ let gen_trusted_source (ec: enclave_content) =
     output_string out_chan (include_hd ^ "\n");
     ms_writer out_chan ec;
     List.iter (fun s -> output_string out_chan (s ^ "\n")) tbridge_list;
-    output_string out_chan (trts_policy_code ^"\n"^ trts_ocall_extra_table ^"\n"^ ecall_extra_table ^"\n"^ ecall_table ^"\n");
+    output_string out_chan (trts_ocall_extra_table ^"\n"^ ecall_extra_table ^"\n"^ ecall_table ^"\n");
     output_string out_chan (entry_table ^ "\n");
     output_string out_chan "\n";
     List.iter (fun s -> output_string out_chan (s ^ "\n")) tproxy_list;
@@ -2612,6 +2581,20 @@ let reduce_import (ec: enclave_content) =
   in
   List.fold_left (combine) (List.hd imported_ec_list) (List.tl imported_ec_list)
 
+(* It generate policy source file. *)
+let gen_policy_source (fname: string) =
+    if not (Sys.file_exists(fname)) then
+        let default_policy_code = "#include \"check_point.hpp\"\n\
+                                   bool CheckPoint::policy_check_user(cp_info_t info, std::deque <cp_info_t> log) {\n\
+                                   \t(void) info;\n\
+                                   \t(void) log;\n\
+                                   \treturn true;\n\
+                                   }"
+        in
+        let out_chan = open_out fname in
+            output_string out_chan default_policy_code;
+            close_out out_chan
+
 (* Generate the Enclave code. *)
 let gen_enclave_code (e: Ast.enclave) (ep: edger8r_params) =
   let ec = reduce_import (parse_enclave_ast e) in
@@ -2628,5 +2611,5 @@ let gen_enclave_code (e: Ast.enclave) (ep: edger8r_params) =
       Plugin.gen_edge_routines ec ep
     else (
       (if ep.gen_untrusted then (gen_untrusted_header ec; if not ep.header_only then gen_untrusted_source ec));
-      (if ep.gen_trusted then (gen_trusted_header ec; if not ep.header_only then gen_trusted_source ec))
+      (if ep.gen_trusted then (gen_trusted_header ec; gen_policy_source("policy_sgx_sef.cpp"); if not ep.header_only then gen_trusted_source ec))
     )

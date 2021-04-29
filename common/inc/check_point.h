@@ -60,13 +60,6 @@ typedef struct {
 } ecall_extra_table_t;
 #endif //ECALL_EXTRA_TABLE_T
 
-#ifndef POLICY_ENTRY_T
-#define POLICY_ENTRY_T
-typedef struct policy_entry {
-    void* func_addr;
-} policy_entry_t;
-#endif //POLICY_ENTRY_T
-
 #ifdef __cplusplus
 extern "C" {
 #endif

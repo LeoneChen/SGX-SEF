@@ -7,12 +7,11 @@
 #include <errno.h> // for errno
 //#include <stdint.h> // for uint32_t
 #include <printf_dbg.h>
-#include "check_point.hpp"
+#include <check_point.hpp>
 
 //#define FILE_MODE// take too much time, an always-on file descriptor seem can't log all info correctly
 //#define WARNING
 //#define CLOSE_CP
-#define APPLY_LOCK
 #define UNUSED(val) (void)(val)
 
 static CheckPoint _check_point;
@@ -20,10 +19,7 @@ CheckPoint *g_check_point = &_check_point;
 //it seems thread local storage(thread_local, __thread) in some position can't work well
 
 CheckPoint::CheckPoint() {
-#ifdef APPLY_LOCK
     pthread_rwlock_init(&m_log_rwlock, NULL);
-    pthread_rwlock_init(&m_policy_rwlock, NULL);
-#endif
 
 #ifdef FILE_MODE
     int try_time = 10;
@@ -61,48 +57,15 @@ int CheckPoint::_trigger(cp_info_t info) {
 #endif
 }
 
-bool CheckPoint::default_init_policy() {
-    for (size_t i = 0; i < g_policy_size; i++) {
-        cp_info_t info;
-        if (not get_func_info((void *) g_policy[i].func_addr, &info)) {
-            return false;
-        }
-        m_policy.push_back({info});
-        m_policy_size++;
-    }
-    return true;
-}
-
 bool CheckPoint::policy_check(cp_info_t info) {
-    if (not m_policy_inititalized) {
-#ifdef APPLY_LOCK
-        pthread_rwlock_wrlock(&m_policy_rwlock);
-#endif
-        if (not default_init_policy()) {
-#ifdef APPLY_LOCK
-            pthread_rwlock_unlock(&m_policy_rwlock);
-#endif
-            return false;
-        }
-#ifdef APPLY_LOCK
-        pthread_rwlock_unlock(&m_policy_rwlock);
-#endif
-        m_policy_inititalized = true;
-    }
 #ifdef FILE_MODE
     UNUSED(info);
     return true;// just for try
 #else // MEM_MODE
     bool ret = false;
-#ifdef APPLY_LOCK
     pthread_rwlock_rdlock(&m_log_rwlock);
-    pthread_rwlock_rdlock(&m_policy_rwlock);
-#endif
-    ret = default_policy_check(info, m_policy, m_log);
-#ifdef APPLY_LOCK
-    pthread_rwlock_unlock(&m_policy_rwlock);
+    ret = policy_check_user(info, m_log);
     pthread_rwlock_unlock(&m_log_rwlock);
-#endif
     return ret;
 #endif // FILE_MODE
 }
@@ -112,41 +75,8 @@ bool CheckPoint::_is_info_equal(cp_info_t info1, cp_info_t info2) {
            ? true : false;
 }
 
-// filter out not interested info, set by user
-bool CheckPoint::default_policy_filter(cp_info_t info) {
-    if (info.interface_type == INTERFACE_ECALL or info.interface_type == INTERFACE_OCALL) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-bool CheckPoint::default_policy_check(cp_info_t info, cp_policy_t policy, std::deque <cp_info_t> log) {
-    if (policy.size() <= 1) return true;
-
-    auto policy_it = policy.rbegin();
-    for (; policy_it != policy.rend(); policy_it++) {
-        if (default_policy_filter(policy_it->info) and _is_info_equal(info, policy_it->info)) {
-            policy_it++;
-            auto log_it = log.rbegin();
-            for (; log_it != log.rend() and policy_it != policy.rend(); log_it++, policy_it++) {
-                while (not default_policy_filter(*log_it)) {
-                    log_it++;
-                }
-                if (not _is_info_equal(*log_it, policy_it->info)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-    }
-    return true;
-}
-
 void CheckPoint::log(cp_info_t info) {
-#ifdef APPLY_LOCK
     pthread_rwlock_wrlock(&m_log_rwlock);
-#endif
 
 #ifdef FILE_MODE
     _log_file_mod(info);
@@ -157,9 +87,7 @@ void CheckPoint::log(cp_info_t info) {
     m_log.push_back(info);
 #endif //FILE_MODE
 
-#ifdef APPLY_LOCK
     pthread_rwlock_unlock(&m_log_rwlock);
-#endif
 }
 
 void CheckPoint::_log_file_mod(cp_info_t info) {
@@ -180,9 +108,7 @@ void CheckPoint::_log_file_mod(cp_info_t info) {
 }
 
 void CheckPoint::show_log(std::string title) {
-#ifdef APPLY_LOCK
     pthread_rwlock_rdlock(&m_log_rwlock);
-#endif
 
 #ifdef FILE_MODE
     _show_log_file_mode(title);
@@ -194,9 +120,7 @@ void CheckPoint::show_log(std::string title) {
 
     printf_dbg("================LOG MEM MODE END================\n");
 #endif //FILE_MODE
-#ifdef APPLY_LOCK
     pthread_rwlock_unlock(&m_log_rwlock);
-#endif
 }
 
 void CheckPoint::_show_log_file_mode(std::string title) {
