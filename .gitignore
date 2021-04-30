@@ -57,3 +57,9 @@ sdk/cpprt/linux/libunwind/include/tdep/libunwind_i.h
 sdk/cpprt/linux/libunwind/libtool
 sdk/cpprt/linux/libunwind/src/Makefile
 sdk/cpprt/linux/libunwind/tests/Makefile.in
+
+sdk/printf_dbg/policy_sgx_sef.cpp
+sdk/protected_fs/sgx_tprotected_fs/policy_sgx_sef.cpp
+sdk/pthread/policy_sgx_sef.cpp
+sdk/switchless/sgx_tswitchless/policy_sgx_sef.cpp
+sdk/tkey_exchange/policy_sgx_sef.cpp
