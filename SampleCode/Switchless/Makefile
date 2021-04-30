@@ -125,7 +125,7 @@ else
 endif
 Crypto_Library_Name := sgx_tcrypto
 
-Enclave_Cpp_Files := Enclave/Enclave.cpp Enclave/policy_sgx_sef.cpp
+Enclave_Cpp_Files := Enclave/Enclave.cpp
 Enclave_Include_Paths := -IEnclave -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/libcxx
 
 Enclave_C_Flags := -nostdinc -fvisibility=hidden -fpie -fstack-protector $(Enclave_Include_Paths)
@@ -221,8 +221,6 @@ Enclave/Enclave_t.h: $(SGX_EDGER8R) Enclave/Enclave.edl
 	@echo "GEN  =>  $@"
 
 Enclave/Enclave_t.c: Enclave/Enclave_t.h
-
-Enclave/policy_sgx_sef.cpp: Enclave/Enclave_t.h
 
 Enclave/Enclave_t.o: Enclave/Enclave_t.c
 	@$(CC) $(Enclave_C_Flags) -c $< -o $@

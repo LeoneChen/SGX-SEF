@@ -82,9 +82,9 @@ fi
 tar -zxf $optlib_name
 tar -zxf $ae_file_name
 tar -zxf $binutils_file_name
-rm -f $optlib_name
-rm -f $ae_file_name
-rm -f $checksum_file
-rm -f $binutils_file_name
+#rm -f $optlib_name
+#rm -f $ae_file_name
+#rm -f $checksum_file
+#rm -f $binutils_file_name
 
 popd

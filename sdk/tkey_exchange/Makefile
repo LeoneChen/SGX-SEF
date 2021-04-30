@@ -36,8 +36,7 @@ CXXFLAGS += -Werror
 
 INCLUDE += -I$(COMMON_DIR)/inc/tlibc    \
            -I$(COMMON_DIR)/inc/internal \
-           -I$(COMMON_DIR)/inc \
-           -I$(LINUX_SDK_DIR)/tlibcxx/include
+           -I$(COMMON_DIR)/inc
 
 INCLUDE += -I$(LINUX_PSW_DIR)/ae/inc    \
            -I$(LINUX_PSW_DIR)/ae/inc/internal \
