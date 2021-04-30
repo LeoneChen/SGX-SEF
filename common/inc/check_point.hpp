@@ -37,6 +37,12 @@ public:
 
     ~CheckPoint(){};// Class's Destructor Function in Enclave is never triggered
 
+    /* provide cp_info_t that contains Index and Interface Type,
+     * but the latter only can tell you it's a ecall or ocall,
+     * the ms info is set to nullptr.
+     */
+    bool get_func_info(void *addr, cp_info_t *info);
+
 private:
     int _trigger(cp_info_t info);
 
@@ -51,12 +57,6 @@ private:
     void _show_log_file_mode(std::string title = "CP_INFO");
 
     cp_info_t str2info(char *str, const char *limiter);
-
-    /* provide cp_info_t that contains Index and Interface Type,
-     * but the latter only can tell you it's a ecall or ocall,
-     * the ms info is set to nullptr.
-     */
-    bool get_func_info(void *addr, cp_info_t *info);
 
     int get_func_idx(void *addr, bool *is_ecall);
 

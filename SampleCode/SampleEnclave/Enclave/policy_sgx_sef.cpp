@@ -13,30 +13,29 @@ static void *call_seq[] = {
         (void *) ecall_pointer_in,
         (void *) ocall_print_string,
 };
+
+static size_t call_seq_size = 7;
 static std::vector <cp_info_t> cp_call_seq;
-static bool is_initialized = false;
-static pthread_rwlock_t policy_rwlock = PTHREAD_RWLOCK_INITIALIZER;
+static pthread_once_t once = PTHREAD_ONCE_INIT;
 
 bool cp_info_filter(cp_info_t info) {
     return (info.interface_type == INTERFACE_ECALL or info.interface_type == INTERFACE_OCALL);
 }
 
+void init_once() {
+    for (size_t i = 0; i < call_seq_size; i++) {
+        cp_info_t info;
+        if (not g_check_point->get_func_info(call_seq[i], &info)) {
+            return;
+        }
+        cp_call_seq.push_back(info);
+    }
+}
+
 // Exposed API for policy check logic, must be set for sgx-sef, can default return true.
 // Has applied log_rwlock_rdlock in wrapper
 bool CheckPoint::policy_check_user(cp_info_t info, std::deque <cp_info_t> log) {
-    if (not is_initialized) {
-        pthread_rwlock_wrlock(&policy_rwlock);
-        for (size_t i = 0; i < 7; i++) {
-            cp_info_t info;
-            if (not get_func_info(call_seq[i], &info)) {
-                pthread_rwlock_unlock(&policy_rwlock);
-                return false;
-            }
-            cp_call_seq.push_back(info);
-        }
-        is_initialized = true;
-        pthread_rwlock_unlock(&policy_rwlock);
-    }
+    pthread_once(&once,init_once);
 
     for (auto it = cp_call_seq.rbegin(); it != cp_call_seq.rend(); it++) {
         if (cp_info_filter(*it) and _is_info_equal(info, *it)) {
