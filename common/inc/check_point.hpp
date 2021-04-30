@@ -31,7 +31,7 @@ class CheckPoint {
 public:
     int trigger(interface_type_t interface_type, int func_index, void *ms);
 
-    void show_log(std::string title = "CP_INFO");
+    void show_log(std::string title = "CP_INFO", bool (*filter)(cp_info_t)=[](cp_info_t){return true;});
 
     CheckPoint();
 
@@ -54,7 +54,7 @@ private:
 
     void _log_file_mod(cp_info_t info);
 
-    void _show_log_file_mode(std::string title = "CP_INFO");
+    void _show_log_file_mode(std::string title = "CP_INFO", bool (*filter)(cp_info_t)=[](cp_info_t){return true;});
 
     cp_info_t str2info(char *str, const char *limiter);
 

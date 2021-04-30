@@ -107,23 +107,25 @@ void CheckPoint::_log_file_mod(cp_info_t info) {
     while (sgx_fclose(log_fp) != 0 and errno == EAGAIN and try_time--);
 }
 
-void CheckPoint::show_log(std::string title) {
+void CheckPoint::show_log(std::string title, bool (*filter)(cp_info_t)) {
     pthread_rwlock_rdlock(&m_log_rwlock);
 
 #ifdef FILE_MODE
-    _show_log_file_mode(title);
+    _show_log_file_mode(title,filter);
 #else //MEM_MODE
     printf_dbg("================LOG MEM MODE================\n");
 
     for (auto info:m_log)
-        _show_info(info, title);
+        if (filter(info))
+            _show_info(info, title);
+
 
     printf_dbg("================LOG MEM MODE END================\n");
 #endif //FILE_MODE
     pthread_rwlock_unlock(&m_log_rwlock);
 }
 
-void CheckPoint::_show_log_file_mode(std::string title) {
+void CheckPoint::_show_log_file_mode(std::string title, bool (*filter)(cp_info_t)) {
     printf_dbg("================LOG FILE MODE================\n");
 
     SGX_FILE *log_fp = nullptr;
@@ -137,7 +139,9 @@ void CheckPoint::_show_log_file_mode(std::string title) {
     char line[BUFSIZ];
     do {
         if (sgx_freadline(line, BUFSIZ, log_fp) == 0) break;
-        this->_show_info(str2info(line, " ,"), title);
+        auto info = str2info(line, " ,");
+        if (filter(info))
+            this->_show_info(info, title);
     } while (true);
 
     try_time = 10;
